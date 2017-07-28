@@ -1,0 +1,373 @@
+<html>
+  <head>
+	<title>Hue Change</title>
+	<meta name="apple-mobile-web-app-capable" content="yes">
+	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+	<script src="two.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+  </head>
+  
+	<body height="100%" style="overflow: hidden">
+		<canvas id="canvas" width="1920" height="1080" style="position: absolute; background-color: #FFFFFF;">
+			get html5
+		</canvas>
+	</body>
+  
+  <script>
+	//global kinda variables
+	var timestep = new TWO.timestep(60);
+	var renderer = new TWO.renderer(document.getElementById("canvas"));
+	var touches = new TWO.touch();
+	var mouse = new TWO.mouse();
+	var keyboard = new TWO.keyboard();
+	//not really global, but I have to put some stuff before the classes :/
+	var score = 0;
+	
+	function relativeDistanceBetween(arc, x, y) {
+		var arcpositionx = arc.position.x + arc.radius * Math.cos(arc.rotation + Math.PI / 4);
+		var arcpositiony = arc.position.y + arc.radius * Math.sin(arc.rotation + Math.PI / 4);
+		var distance = Math.pow(arcpositionx - x, 2) + Math.pow(arcpositiony - y, 2);
+		
+		return distance;
+	}
+	
+	class RotatingCircle {
+		constructor(x, y, radius, lineWidth, rotSpeed) {
+			this.rot = 0;
+			this.rotSpeed = rotSpeed;
+			this.arcs = [];
+			this.x = x;
+			this.y = y;
+			this.arcs.push(new TWO.arc(x, y, radius, "#FF0000", Math.PI / 2, lineWidth));
+			this.arcs.push(new TWO.arc(x, y, radius, "#00FF00", Math.PI / 2, lineWidth));
+			this.arcs.push(new TWO.arc(x, y, radius, "#0000FF", Math.PI / 2, lineWidth));
+			this.arcs.push(new TWO.arc(x, y, radius, "#FFFF00", Math.PI / 2, lineWidth));
+			this.leftClosestDistanceIndex = 0;
+			this.rightClosestDistanceIndex = 0;
+			this.touchingPlayer = false;
+			
+			this.update = function(player) {
+				this.rot += this.rotSpeed;
+				this.arcs[0].rotation = this.rot;
+				this.arcs[1].rotation = this.rot + (Math.PI / 2);
+				this.arcs[2].rotation = this.rot + (Math.PI);
+				this.arcs[3].rotation = this.rot + (Math.PI * 3 / 2);
+				
+				for (var i = 0; i < this.arcs.length; i++) {
+					if (relativeDistanceBetween(this.arcs[i], player.position.x - player.radius, player.position.y) < relativeDistanceBetween(this.arcs[this.leftClosestDistanceIndex], player.position.x - player.radius, player.position.y)) {
+						this.leftClosestDistanceIndex = i;
+					}
+					if (relativeDistanceBetween(this.arcs[i], player.position.x + player.radius, player.position.y) < relativeDistanceBetween(this.arcs[this.rightClosestDistanceIndex], player.position.x + player.radius, player.position.y)) {
+						this.rightClosestDistanceIndex = i;
+					}
+				}
+				
+				if (player.radius + this.arcs[0].radius + this.arcs[0].lineWidth / 2 > Math.sqrt(Math.pow(this.arcs[0].position.x - player.position.x, 2) + Math.pow(this.arcs[0].position.y - player.position.y, 2)) &&
+					this.arcs[0].radius - player.radius - this.arcs[0].lineWidth / 2 < Math.sqrt(Math.pow(this.arcs[0].position.x - player.position.x, 2) + Math.pow(this.arcs[0].position.y - player.position.y, 2))) {
+					this.touchingPlayer = true;
+				}
+				else {
+					this.touchingPlayer = false;
+				}
+				
+				if (this.touchingPlayer) {
+					if (this.leftClosestDistanceIndex != this.rightClosestDistanceIndex || player.color != this.arcs[this.leftClosestDistanceIndex].color) {
+						player.die();
+					}
+				}
+			}
+			this.render = function(ctx, ratio) {
+				this.arcs[0].render(ctx, ratio);
+				this.arcs[1].render(ctx, ratio);
+				this.arcs[2].render(ctx, ratio);
+				this.arcs[3].render(ctx, ratio);
+			}
+		}
+	}
+	
+	class TwoRotatingCircles {
+		constructor (x, y, radius, lineWidth) {
+			this.x = x;
+			this.y = y;
+			this.circle1 = new RotatingCircle(x - radius / 2, y, radius, lineWidth, -0.04);
+			this.circle1.rot = -Math.PI / 2;
+			this.circle2 = new RotatingCircle(x + radius / 2, y, radius, lineWidth, 0.04);
+			this.update = function(player) {
+				this.circle1.update(player);
+				this.circle2.update(player);
+				if (Math.abs(this.circle1.rot) > Math.abs(this.circle2.rot)) {
+					if (player.color == "#FF0000" || player.color == "#0000FF") {
+						this.circle2.rot = Math.abs(this.circle1.rot) + Math.PI / 2;
+					}
+				}
+				else {
+					if (player.color == "#FFFF00" || player.color == "#00FF00") {
+						this.circle2.rot = Math.abs(this.circle1.rot) - Math.PI / 2;
+					}
+				}
+			}
+			this.render = function(ctx, ratio) {
+				this.circle1.render(ctx, ratio);
+				this.circle2.render(ctx, ratio);
+			}
+		}
+	}
+	
+	class ColorSwitcher extends TWO.rectangle {
+		constructor(x, y) {
+			super(x, y, 25, 25);
+			this.color = "#FF0000";
+			this.timer = 0.0;
+			
+			this.update = function(player) {
+				this.timer += timestep.realTime;
+				if (this.timer >= 0.5) {
+					var lastColor = this.color;
+					while (this.color == lastColor) {
+						var colorChooser = Math.random();
+						if (colorChooser <= 0.25) {
+							this.color = "#FF0000";
+						}
+						else if (colorChooser <= 0.5) {
+							this.color = "#00FF00";
+						}
+						else if (colorChooser <= 0.75) {
+							this.color = "#0000FF";
+						}
+						else {
+							this.color = "#FFFF00";
+						}
+					}
+					this.timer = 0.0;
+				}
+				if (this.position.y - this.height / 2 < player.position.y - player.radius && this.position.y + this.height / 2 > player.position.y - player.radius) {
+					var lastColor = player.color;
+					player.color = this.color;
+					this.position.y -= 1600;
+				}
+			}
+		}
+	}
+	
+	class StarPoint extends TWO.rectangle {
+		constructor(x, y) {
+			super(x, y, 50, 25);
+			this.update = function(player) {
+				if (this.position.y - this.height / 2 < player.position.y - player.radius && this.position.y + this.height / 2 > player.position.y - player.radius) {
+					score += 1;
+					spawnStarParticles(this.position.x, this.position.y, 12.5);
+					this.position.y -= 1600;
+				}
+			}
+		}
+	}
+	
+	class Particle extends TWO.circle {
+		constructor(x, y, radius, color, xVel, yVel, life, gravity) {
+			super(x, y, radius, color);
+			this.xVel = xVel;
+			this.yVel = yVel;
+			this.life = life;
+			this.gravity = gravity;
+			this.update = function() {
+				this.life -= timestep.realTime;
+				this.yVel += this.gravity;
+				this.position.x += this.xVel;
+				this.position.y += this.yVel;
+				if (this.position.x > renderer.rightOfScreen || this.position.x < renderer.leftOfScreen) {
+					this.xVel *= -1;
+				}
+			}
+		}
+	}
+	
+	function spawnDeathParticles(x, y, num) {
+		for (var i = 0; i < num; i++) {
+				var particleSize = Math.random() * 10 + 5;
+				var colorChooser = Math.random();
+				if (colorChooser <= 0.25) {
+					colorChooser = "#FF0000";
+				}
+				else if (colorChooser <= 0.5) {
+					colorChooser = "#00FF00";
+				}
+				else if (colorChooser <= 0.75) {
+					colorChooser = "#0000FF";
+				}
+				else {
+					colorChooser = "#FFFF00";
+				}
+				particles.push(new Particle(x, y, particleSize, colorChooser, Math.random() * 40 - 20, Math.random() * -15 - 15, 1.5, 1));
+				scene.add(particles[particles.length - 1]);
+			}
+	}
+	
+	function spawnStarParticles(x, y, num) {
+		for (var i = 0; i < num; i++) {
+			particles.push(new Particle(x, y, 20, "#000", Math.random() * 0.5 - 0.25, Math.random() * 0.5 - 0.25, Math.random() + 1, 0));
+			particleScene.add(particles[particles.length - 1]);
+		}
+	}
+	
+	function spawnRandomObstacle(x, y, radius, lineWidth) {
+		var random = Math.random();
+		if (random <= 0.5) {
+			obstacles.push(new RotatingCircle(x, y, radius, lineWidth, 0.04));
+		}
+		else {
+			obstacles.push(new TwoRotatingCircles(x, y, radius, lineWidth));
+		}
+		scene.add(obstacles[obstacles.length - 1]);
+	}
+  
+	var scene = new TWO.scene();
+	var particleScene = new TWO.scene();
+	var player = new TWO.circle(0, 350, 25, "#FF0000");
+	var obstacles = [];
+	var switchers = [];
+	var starPoints = [];
+	var particles = [];
+	var targetCameraPos = 0;
+	var score = 0;
+	var scoreText = TWO.text("0", Math.round(-document.body.clientWidth / 2), Math.round(-document.body.clientHeight / 2), "#000", "Arial", "150", "bold");
+	
+	function resetCourses() {
+		obstacles = [];
+		switchers = [];
+		starPoints = [];
+		scene.clear();
+		scene.add(particleScene);
+		
+		spawnRandomObstacle(0, -200, 200, 40);
+		spawnRandomObstacle(0, -1000, 200, 40);
+		spawnRandomObstacle(0, -1800, 200, 40);
+		
+		switchers.push(new ColorSwitcher(0, -600));
+		switchers.push(new ColorSwitcher(0, -1400));
+		scene.add(switchers[0]);
+		scene.add(switchers[1]);
+		
+		starPoints.push(new StarPoint(0, -200));
+		starPoints.push(new StarPoint(0, -1000));
+		scene.add(starPoints[0]);
+		scene.add(starPoints[1]);
+		
+		scene.add(player);
+		scene.add(scoreText);
+	}
+    
+    function main() {
+			//renderer.render(particleScene);
+			renderer.render(scene);
+			
+			timestep.tick();
+			requestFrame(main);
+			
+			//moving camera
+			scene.camera.position.y += (targetCameraPos - scene.camera.position.y) * 0.1;
+			if (player.position.y / renderer.ratio < -scene.camera.position.y) {
+				targetCameraPos = -player.position.y / renderer.ratio;
+			}
+			
+			//updating stuff
+			for (var i = 0; i < particles.length; i++) {
+				particles[i].update();
+				if (particles[i].life <= 0) {
+					scene.remove(particles[i]);
+					particleScene.remove(particles[i]);
+					particles.splice(i, 1);
+				}
+			}
+			for (var i = 0; i < obstacles.length; i++) {
+				obstacles[i].update(player);
+				if ((player.position.y - obstacles[i].y) / renderer.ratio < -800) {
+					scene.remove(obstacles[i]);
+					obstacles.splice(i, 1);
+					var highestCircle = 0; 
+					for (var j = 0; j < obstacles.length; j++) {
+						if (obstacles[j].y < highestCircle) {
+							highestCircle = obstacles[j].y;
+						}
+					}
+					
+					spawnRandomObstacle(0, highestCircle - 800, 200, 40);
+					scene.add(obstacles[obstacles.length - 1]);
+				}
+			}
+			for (var i = 0; i < switchers.length; i++) {
+				switchers[i].update(player);
+			}
+			for (var i = 0; i < starPoints.length; i++) {
+				starPoints[i].update(player);
+			}
+			player.update();
+			//stuff for scoreText
+			scoreText.text = score.toString();
+			renderer.ctx.font = (scoreText.fontSize * scoreText.size / renderer.ratio).toString() + "px " + scoreText.font;
+			var scorewidth = renderer.ctx.measureText(scoreText.text);
+			scoreText.position.x = Math.round(-document.body.clientWidth / 2) * renderer.ratio + (scorewidth.width / 2) + 20 * renderer.ratio;
+			scoreText.position.y = Math.round(-document.body.clientHeight / 2) * renderer.ratio + 75 - scene.camera.position.y * renderer.ratio;
+    }
+    
+    window.onload = function() {
+		//add variables to player
+		player.yVel = 0;
+		player.jumpEnabled = false;
+		player.dead = false;
+		player.deathTimer = 1.5;
+		player.update = function() {
+			if (player.dead == false) {
+				if (keyboard.space || mouse.clicking || touches.length > 0) {
+					if (player.jumpEnabled) {
+						player.yVel = -18;
+					}
+					player.jumpEnabled = false;
+				}
+				else if (keyboard.space == false && mouse.clicking == false && touches.length <= 0) {
+					player.jumpEnabled = true;
+				}
+
+				player.yVel += 1;
+				player.position.y += player.yVel;
+
+				if (player.position.y >= 350) {
+					player.yVel = 0;
+					player.position.y = 350;
+				}
+			}
+			else {
+				player.deathTimer -= timestep.realTime;
+				if (player.deathTimer <= 0.0) {
+					player.resetGame();
+				}
+			}
+		}
+		player.die = function() {
+			scene.remove(player);
+			spawnDeathParticles(player.position.x, player.position.y, 20);
+			player.dead = true;
+			player.position.x = 5000;
+		}
+		player.resetGame = function() {
+			player.yVel = 0;
+			player.position.y = 350;
+			player.position.x = 0;
+			score = 0;
+			player.color = "#FF0000";
+			resetCourses();
+			targetCameraPos = 0;
+			player.deathTimer = 1.5;
+			player.dead = false;
+		}
+		
+		//set up and start game
+		resetCourses();
+		main();
+    }
+  </script>
+</html>
