@@ -4,7 +4,12 @@ class Character extends Actor {
 		this.dangerous = false;
 		this.health = 1;
 		this.exp = 5;
+		this.coins = 1;
 		this.dead = false;
+		this.parentRoom;
+		
+		this.hurt = function(player) {}
+		this.collide = function(player) {}
 	}
 }
 
@@ -20,6 +25,7 @@ class Boxer extends Character {
 		this.walkRightStrip.add(FRAME.getImage('boxerRight1'));
 		this.walkRightStrip.add(FRAME.getImage('boxerRight2'));
 		
+		this.coins = Math.floor(Math.random() * 3) + 3;
 		this.stateTimer = 0;
 		this.state = 1;//0=left,1=idle,2=right
 		this.facingRight = false;
@@ -30,8 +36,13 @@ class Boxer extends Character {
 		this.hurt = function(player) {
 			this.health -= 1;
 			if (this.health <= 0) {
-				player.exp += this.exp;
 				this.dead = true;
+				for (var i = 0; i < this.exp; i++) {
+					this.parentRoom.addTile(new ExpTile(this.x, this.y));
+				}
+				for (var i = 0; i < this.coins; i++) {
+					this.parentRoom.addTile(new CoinTile(this.x, this.y));
+				}
 			}
 		}
 		this.update = function(realTime, solids) {
@@ -98,22 +109,70 @@ class Sprite extends Character {
 		this.walkRightStrip.add(FRAME.getImage('spriteRight1'));
 		this.walkRightStrip.add(FRAME.getImage('spriteRight2'));
 		
+		this.light = false;
+		this.invincible = false;
+		this.invincibilityTimer = INVINCIBILITY_TIMER / 2;
+		this.flickerTimer = FLICKER_TIMER;
+		
 		this.health = 2;
-		this.exp = 12;
+		this.exp = 15;
+		this.coins = Math.floor(Math.random() * 11) + 5;
 		this.timer = 0;
 		this.direction = 1;//0=right,1=front,etc
 		this.image = this.idleFrontImage;
 		this.width = this.image.width * PIXEL_SCALING;
 		this.height = this.image.height * PIXEL_SCALING;
 		
+		this.collide = function(player) {
+			if (player.invincible == false) {
+				player.health -= 1;
+				player.invincible = true;
+			}
+			if (this.invincible == false) {
+				this.health -= 1;
+				this.invincible = true;
+				if (this.health <= 0) {
+					this.dead = true;
+					for (var i = 0; i < this.exp; i++) {
+						this.parentRoom.addTile(new ExpTile(this.x, this.y));
+					}
+					for (var i = 0; i < this.coins; i++) {
+						this.parentRoom.addTile(new CoinTile(this.x, this.y));
+					}
+				}
+			}
+		}
 		this.hurt = function(player) {
-			this.health -= 1;
-			if (this.health <= 0) {
-				player.exp += this.exp;
-				this.dead = true;
+			if (this.invincible == false) {
+				this.health -= 1;
+				this.invincible = true;
+				if (this.health <= 0) {
+					this.dead = true;
+					for (var i = 0; i < this.exp; i++) {
+						this.parentRoom.addTile(new ExpTile(this.x, this.y));
+					}
+					for (var i = 0; i < this.coins; i++) {
+						this.parentRoom.addTile(new CoinTile(this.x, this.y));
+					}
+				}
 			}
 		}
 		this.update = function(realTime, solids) {
+			if (this.invincible == true) {
+				this.invincibilityTimer -= realTime;
+				this.flickerTimer -= realTime;
+				if (this.flickerTimer <= 0) {
+					this.flickerTimer = FLICKER_TIMER;
+					this.light = !this.light;
+				}
+				if (this.invincibilityTimer <= 0) {
+					this.light = false;
+					this.invincible = false;
+					this.invincibilityTimer = INVINCIBILITY_TIMER;
+					this.flickerTimer = FLICKER_TIMER;
+				}
+			}
+			
 			this.timer -= realTime;
 			if (this.timer <= 0) {
 				this.timer = SPRITE_TIMER + (Math.random() * 0.25 - 0.125);
@@ -181,7 +240,9 @@ class Sprite extends Character {
 			}
 		}
 		this.render = function() {
+			if (this.light) {this.ctx.globalAlpha = FLICKER_ALPHA;}
 			this.ctx.drawImage(this.image, -this.width/2, -this.height/2, this.width, this.height);
+			this.ctx.globalAlpha = 1.0;
 		}
 	}
 }

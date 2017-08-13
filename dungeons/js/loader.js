@@ -7,5 +7,7 @@ document.writeln("<script src=\"js/characters.js\"></script>");
 document.writeln("<script src=\"js/room.js\"></script>");
 document.writeln("<script src=\"js/player.js\"></script>");
 document.writeln("<script src=\"js/dungeon.js\"></script>");
+document.writeln("<script src=\"js/menu.js\"></script>");
+document.writeln("<script src=\"js/results.js\"></script>");
 
 document.writeln("<script src=\"js/main.js\"></script>");

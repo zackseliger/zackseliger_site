@@ -1,4 +1,4 @@
-var FRAME = {ctx:null, canvas:null, game_width:0, game_height:0, scaleX:1, scaleY:1, x:0, y:0, smoothing:false, images: new Map()};
+var FRAME = {ctx:null, canvas:null, game_width:0, game_height:0, scaleX:1, scaleY:1, x:0, y:0, smoothing:false, images: new Map(), sounds: new Map()};
 FRAME.resize = function() {
 	var stageWidth = window.innerWidth;
 	var stageHeight = window.innerHeight;
@@ -40,12 +40,54 @@ FRAME.loadImage = function(path, name) {
 FRAME.getImage = function(name) {
 	return FRAME.images.get(name);
 }
+FRAME.loadSound = function(path, name, loop, size) {
+	var loop = loop || false;
+	var size = size || 1;
+	var audio;
+	if (loop == true) {
+		audio = new Audio(path);
+		audio.loop = true;
+	}
+	else {
+		audio = new SoundPool(path, size);
+		audio.loop = false;
+	}
+	FRAME.sounds.set(name, audio);
+}
+FRAME.playSound = function(name) {
+	if (FRAME.sounds.get(name).loop == true || FRAME.sounds.get(name).loop == false && PLAY_SFX_OPTION == true) {
+		FRAME.sounds.get(name).play();
+	}
+}
+FRAME.stopSound = function(name) {
+	FRAME.sounds.get(name).pause();
+	FRAME.sounds.get(name).currentTime = 0;
+}
 
 requestFrame = ( window.requestAnimationFrame || window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame ||
 	window.oRequestAnimationFrame || window.msRequestAnimationFrame ||
 	function( callback ) {
 		window.setTimeout(callback, 1000 / 60);
 	});
+
+class SoundPool {
+	constructor(path, num) {
+		this.size = num;
+		this.pool = [];
+		this.currNum = 0;
+		
+		for (var i = 0; i < this.size; i++) {
+			var sound = new Audio(path);
+			sound.load();
+			this.pool.push(sound);
+		}
+		
+		this.play = function() {
+			this.pool[this.currNum].play();
+			this.currNum = (this.currNum + 1) % this.size;
+		}
+	}
+}
 
 class Actor {
 	constructor(x, y, rot, ctx) {

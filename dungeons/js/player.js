@@ -19,10 +19,10 @@ class Player extends Actor {
 		this.walkLeftStrip.add(FRAME.getImage('lawlessLeft1'));
 		this.walkLeftStrip.add(FRAME.getImage('lawlessLeft2'));
 		
-		this.flickerTimer = PLAYER_FLICKER_TIMER;
+		this.flickerTimer = FLICKER_TIMER;
 		this.light = true;
 		this.invincible = true;
-		this.invinTimer = PLAYER_INVINCIBILITY_TIMER;
+		this.invinTimer = INVINCIBILITY_TIMER;
 		
 		this.direction = 1;//0=right,1=down,2=left,3=up
 		this.rightRepeat = false;
@@ -35,7 +35,9 @@ class Player extends Actor {
 		this.maxExp = 10;
 		this.level = 1;
 		this.coins = 0;
-		this.health = 4;
+		this.health = PLAYER_STARTING_HEALTH;
+		this.prevHealth = this.health;
+		this.maxHealth = PLAYER_STARTING_HEALTH;
 		this.facingFront = true;
 		this.image = this.idleFrontImage;
 		this.width = this.image.width * PIXEL_SCALING;//concerned about this
@@ -52,19 +54,20 @@ class Player extends Actor {
 				}
 				if (this.invinTimer <= 0) {
 					this.invincible = false;
-					this.flickerTimer = PLAYER_FLICKER_TIMER;
+					this.flickerTimer = FLICKER_TIMER;
 					this.light = false;
-					this.invinTimer = PLAYER_INVINCIBILITY_TIMER;
+					this.invinTimer = INVINCIBILITY_TIMER;
 				}
 			}
 			
 			var prevX = this.x;
 			var prevY = this.y;
 			var solids = room.getSolidTiles();
+			var tiles = room.tiles;
 			var characters = room.getCharacters();
 			
 			//get user input, and correct collision with solids on each axis
-			if (keyboard[65]) {//A
+			if (keyboard[65] || keyboard[37]) {//A
 				if (this.leftRepeat == false) {
 					this.direction = 2;
 					this.leftRepeat = true;
@@ -72,9 +75,12 @@ class Player extends Actor {
 				this.x -= PLAYER_SPEED;
 			}
 			else {
+				this.upRepeat = false;
+				this.downRepeat = false;
 				this.leftRepeat = false;
+				this.rightRepeat = false;
 			}
-			if (keyboard[68]) {//D
+			if (keyboard[68] || keyboard[39]) {//D
 				if (this.rightRepeat == false) {
 					this.direction = 0;
 					this.rightRepeat = true;
@@ -82,6 +88,9 @@ class Player extends Actor {
 				this.x += PLAYER_SPEED;
 			}
 			else {
+				this.upRepeat = false;
+				this.downRepeat = false;
+				this.leftRepeat = false;
 				this.rightRepeat = false;
 			}
 			for (var i = 0; i < solids.length; i++) {
@@ -90,7 +99,7 @@ class Player extends Actor {
 					break;
 				}
 			}
-			if (keyboard[87]) {//W
+			if (keyboard[87] || keyboard[38]) {//W
 				if (this.upRepeat == false) {
 					this.direction = 3;
 					this.upRepeat = true;
@@ -100,8 +109,11 @@ class Player extends Actor {
 			}
 			else {
 				this.upRepeat = false;
+				this.downRepeat = false;
+				this.leftRepeat = false;
+				this.rightRepeat = false;
 			}
-			if (keyboard[83]) {//S
+			if (keyboard[83] || keyboard[40]) {//S
 				if (this.downRepeat == false) {
 					this.direction = 1;
 					this.downRepeat = true;
@@ -110,7 +122,10 @@ class Player extends Actor {
 				this.facingFront = true;
 			}
 			else {
+				this.upRepeat = false;
 				this.downRepeat = false;
+				this.leftRepeat = false;
+				this.rightRepeat = false;
 			}
 			for (var i = 0; i < solids.length; i++) {
 				if (hitTestObjects(this, solids[i])) {
@@ -166,6 +181,18 @@ class Player extends Actor {
 				}
 			}
 			
+			//colliding with characters and tiles
+			for (var i = 0; i < characters.length; i++) {
+				if (hitTestObjects(characters[i], this)) {
+					characters[i].collide(this);
+				}
+			}
+			for (var i = 0; i < tiles.length; i++) {
+				if (hitTestObjects(tiles[i], this)) {
+					tiles[i].collide(this);
+				}
+			}
+			
 			//level up
 			if (this.exp >= this.maxExp) {
 				this.exp -= this.maxExp;
@@ -173,6 +200,12 @@ class Player extends Actor {
 				this.level += 1;
 				this.levelText.text = this.level;
 			}
+			
+			//see if hurt, play sound
+			if (this.prevHealth > this.health) {
+				FRAME.playSound('hurt' + (Math.floor(Math.random() * 3) + 1));
+			}
+			this.prevHealth = this.health;
 			
 			//change image
 			if (prevX != this.x || prevY != this.y) {
@@ -205,11 +238,11 @@ class Player extends Actor {
 			}
 		}
 		this.render = function() {
-			if (this.light) {this.ctx.globalAlpha = 0.8;}
+			if (this.light) {this.ctx.globalAlpha = FLICKER_ALPHA;}
 			this.ctx.drawImage(this.image, -this.width / 2, -this.height / 2, this.width, this.height);
 			for (var i = 0; i < this.health; i++) {
 				this.ctx.fillStyle = "#EE2222";
-				this.ctx.fillRect(-this.width/2 + i*15, -this.height/2-12, 10, 10);
+				this.ctx.fillRect(-this.width/2 + i*13, -this.height/2-12, 10, 10);
 			}
 			this.levelText.draw();
 			this.ctx.globalAlpha = 1;

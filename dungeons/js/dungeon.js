@@ -4,6 +4,14 @@ class Dungeon {
 		this.rooms = [[]];
 		this.currx = 0;
 		this.curry = 0;
+		this.state = "running";
+		this.endRoomX = 0;
+		this.endRoomY = 0;
+		
+		//for results screen
+		this.timer = 0;
+		this.coins = 0;
+		this.level = 0;
 		
 		this.addPlayer = function(player) {
 			player.x = FRAME.game_width / 2;
@@ -11,7 +19,7 @@ class Dungeon {
 			this.players.push(player);
 		}
 		this.addRoom = function(x, y, room) {
-			if (this.rooms[x] == undefined) this.rooms[x] = [];
+			while (this.rooms[x] == undefined) this.rooms.push([]);
 			this.rooms[x][y] = room;
 		}
 		this.changeRooms = function(x, y) {
@@ -53,31 +61,59 @@ class Dungeon {
 		this.makeStartRoom = function(x, y) {
 			this.rooms[x][y].makeStartRoom();
 		}
+		this.makeEndRoom = function(x, y) {
+			this.rooms[x][y].makeEndRoom();
+			this.endRoomX = x;
+			this.endRoomY = y;
+		}
+		this.end = function() {
+			this.state = "lost";
+		}
 		this.update = function(realTime) {
 			var prevx = this.currx;
 			var prevy = this.curry;
-			this.rooms[this.currx][this.curry].update(realTime, this.players);
+			this.timer += realTime;
+			this.rooms[this.currx][this.curry].update(realTime);
+			
 			for (var i = 0; i < this.players.length; i++) {
 				this.players[i].update(realTime, this.rooms[this.currx][this.curry]);
-				if (this.players[i].x - this.players[i].width/2 > FRAME.game_width) {
-					this.currx += 1;
-					this.players[i].x -= FRAME.game_width;
-				}
-				else if (this.players[i].x + this.players[i].width/2 < 0) {
-					this.currx -= 1;
-					this.players[i].x += FRAME.game_width;
-				}
-				else if (this.players[i].y - this.players[i].height/2 > FRAME.game_height) {
-					this.curry += 1;
-					this.players[i].y -= FRAME.game_height;
-				}
-				else if (this.players[i].y + this.players[i].height/2 < 0) {
-					this.curry -= 1;
-					this.players[i].y += FRAME.game_height;
+				if (this.currx != this.endRoomX || this.curry != this.endRoomY) {
+					if (this.players[i].x - this.players[i].width/2 > FRAME.game_width) {
+						this.currx += 1;
+						this.players[i].x -= FRAME.game_width;
+					}
+					else if (this.players[i].x + this.players[i].width/2 < 0) {
+						this.currx -= 1;
+						this.players[i].x += FRAME.game_width;
+					}
+					else if (this.players[i].y - this.players[i].height/2 > FRAME.game_height) {
+						this.curry += 1;
+						this.players[i].y -= FRAME.game_height;
+					}
+					else if (this.players[i].y + this.players[i].height/2 < 0) {
+						this.curry -= 1;
+						this.players[i].y += FRAME.game_height;
+					}
+					if (this.players[i].health <= 0) {
+						this.players.splice(i, 1);
+						if (this.players.length <= 0) {
+							this.end();
+						}
+					}
 				}
 			}
+			
 			if (prevx != this.currx || prevy != this.curry) {
 				this.changeRooms(this.currx, this.curry);
+			}
+			if (this.currx == this.endRoomX && this.curry == this.endRoomY && this.rooms[this.currx][this.curry].winAnimationDone) {
+				this.state = "won";
+				this.level = 0;
+				this.coins = 0;
+				for (var i = 0; i < this.players.length; i++) {
+					this.level += this.players[i].level;
+					this.coins += this.players[i].coins;
+				}
 			}
 		}
 		this.draw = function() {

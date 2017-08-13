@@ -5,8 +5,10 @@ class Room extends Actor {
 		this.tiles = [];
 		this.characters = [];
 		this.hasWalls = false;
+		this.winAnimationDone = false;
 		
 		this.addTile = function(tile, test) {
+			tile.parentRoom = this;
 			var keepOffWalls = test || false;
 			if (keepOffWalls == true) {
 				while (tile.x + tile.width/2 > FRAME.game_width - 10 || tile.x < FRAME.game_width / 3 && tile.x + tile.width/2 > FRAME.game_width / 3) {
@@ -34,6 +36,7 @@ class Room extends Actor {
 			return solidTiles;
 		}
 		this.addCharacter = function(character) {
+			character.parentRoom = this;
 			this.characters.push(character);
 		}
 		this.hurtCharacter = function(index, player) {
@@ -42,7 +45,7 @@ class Room extends Actor {
 		this.getCharacters = function() {
 			return this.characters;
 		}
-		this.update = function(realTime, players) {
+		this.update = function(realTime) {
 			Object.getPrototypeOf(this).update.apply(this, [realTime]);
 			//update characters
 			for (var i = 0; i < this.characters.length; i++) {
@@ -53,8 +56,8 @@ class Room extends Actor {
 			}
 			//update tiles
 			for (var i = 0; i < this.tiles.length; i++) {
-				this.tiles[i].update(players);
-				if (this.tiles[i].dead) {
+				this.tiles[i].update(realTime);
+				if (this.tiles[i].dead == true) {
 					this.tiles.splice(i, 1);
 				}
 			}
@@ -65,16 +68,29 @@ class Room extends Actor {
 		}
 		this.draw = function() {
 			Object.getPrototypeOf(this).draw.apply(this);
+			var objects = []
 			for (var i = 0; i < this.tiles.length; i++) {
-				this.tiles[i].draw();
+				objects.push(this.tiles[i]);
 			}
 			for (var i = 0; i < this.characters.length; i++) {
-				this.characters[i].draw();
+				objects.push(this.characters[i]);
+			}
+			objects.sort(function(a, b) {return (a.y+a.height/2)-(b.y+b.height/2)});
+			for (var i = 0; i < objects.length; i++) {
+				objects[i].draw();
 			}
 		}
 		this.makeStartRoom = function() {
 			this.tiles.splice(0, this.tiles.length);
 			this.characters.splice(0, this.characters.length);
+			if (TIMES_PLAYED == 0) {
+				this.addTile(new TutorialTile());
+			}
+		}
+		this.makeEndRoom = function() {
+			this.characters.splice(0, this.characters.length);
+			this.tiles.splice(0, this.tiles.length);
+			this.addTile(new EndTile(FRAME.game_width / 2, 0));
 		}
 		
 		//adding rocks
@@ -97,15 +113,34 @@ class Room extends Actor {
 				this.addTile(new RockTile(xpos, ypos), true);
 			}
 		}
+		//chests
+		for (var i = 0; i < 1; i++) {
+			var xpos = FRAME.game_width / 2;
+			var ypos = FRAME.game_height / 2;
+			
+			if (Math.random() < 0.2) {
+				this.addTile(new ChestTile(xpos, ypos));
+			}
+		}
+		//spikes
+		for (var i = 0; i < 2; i++) {
+			var xpos = (Math.random() * (FRAME.game_width - 400)) + 200;
+			var ypos = (Math.random() * (FRAME.game_height - 400)) + 200;
+			
+			if (Math.random() > 0.9) {
+				this.addTile(new SpikeTile(xpos, ypos));
+			}
+		}
 		//boxers
 		for (var i = 0; i < 4; i++) {
 			var xpos = FRAME.game_width / 2;
-			var ypos = Math.random() * (FRAME.game_height - 40) + 20;
+			var ypos = Math.random() * (FRAME.game_height - 100) + 50;
 			
 			if (Math.random() > 0.5) {
 				this.addCharacter(new Boxer(xpos, ypos));
 			}
 		}
+		//sprites
 		for (var i = 0; i < 3; i++) {
 			var xpos = FRAME.game_width / 2;
 			var ypos = FRAME.game_width / 2;
