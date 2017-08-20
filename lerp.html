@@ -1,0 +1,205 @@
+<html>
+<head>
+	<script src="two.js"></script>
+	<title>Buuuuble.io</title>
+	<meta name="apple-mobile-web-app-capable" content="yes">
+	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+	<link href="https://fonts.googleapis.com/css?family=Comfortaa" rel="stylesheet">
+	<style>
+	* {
+		margin: 0;
+		padding: 0;
+    }
+	</style>
+</head>
+<body height="100%" style="overflow: hidden">
+	<canvas id="canvas" width="0" height="0" style="position: absolute; background-color: #FFFFFF;">get html5</canvas>
+	
+	<div id="startGUI">
+	<div id="cover" style="position: absolute; top: 0; left: 0; height:100%; width:100%; background-color: #333; opacity: 0.2;"></div>
+	<form style="position:absolute;" onsubmit="startGame();return false;">
+		<input type="text" id="name"></input>
+		<input type="submit" value="Start"></input>
+	</form>
+	</div>
+</body>
+	
+<script>
+	var renderer = new TWO.renderer(document.getElementById("canvas"));
+	var keyboard = new TWO.keyboard();
+	var ws;
+	var frames = [];
+	var lerpFrames = [];
+	var t = 1.0;
+	var currentTime = Date.now();
+	var prevTime = 0;
+	
+	class Bubble extends TWO.circle {
+		constructor(startx, starty, id) {
+			super(startx, starty, 25, "#FFF");
+			this.id = id || -1;
+			this.controls = {
+				wDown: false,
+				aDown: false,
+				sDown: false,
+				dDown: false,
+			}
+		}
+	}
+	
+	var scene = new TWO.scene();
+	var bigbubble = new TWO.circle(0, 0, window.innerHeight / 2 * renderer.ratio);
+	var gradient = renderer.ctx.createLinearGradient(-bigbubble.radius, 0, bigbubble.radius, 0);
+	gradient.addColorStop(0, "#FF4446");
+	gradient.addColorStop(0.5, "#EE2246");
+	gradient.addColorStop(1, "#DD0046");
+	bigbubble.color = gradient;
+	var playerid;
+	var player;
+	var PLAYERS = [];
+	
+	function idOf(array, test) {
+		for (var i = 0; i < array.length; i++) {
+			if (array[i].id == test) {
+				return id;
+			}
+		}
+		return -1;
+	}
+	
+	function indexFromId(array, test) {
+	for (var i = 0; i < array.length; i++) {
+			if (array[i].id == test) {
+				return i;
+			}
+		}
+		return -1;
+	}
+	
+	function main() {
+		renderer.render(scene);
+		prevTime = currentTime;
+		currentTime = Date.now();
+		
+		player = PLAYERS[indexFromId(PLAYERS, playerid)];
+		
+		if (player != undefined) {
+			//update client stuff for server
+			var prevControls = JSON.stringify(player.controls);
+			if (keyboard[87] == true) {
+				player.controls.wDown = true;
+			}
+			else {
+				player.controls.wDown = false;
+			}
+			if (keyboard[65] == true) {
+				player.controls.aDown = true;
+			}
+			else {
+				player.controls.aDown = false;
+			}
+			if (keyboard[83] == true) {
+				player.controls.sDown = true;
+			}
+			else {
+				player.controls.sDown = false;
+			}
+			if (keyboard[68] == true) {
+				player.controls.dDown = true;
+			}
+			else {
+				player.controls.dDown = false;
+			}
+			//send info to server if controls changed
+			if (prevControls !== JSON.stringify(player.controls)) {
+				ws.send('c' + JSON.stringify([playerid, player.controls]));
+			}
+		}
+		
+		//lerp
+		if (frames.length >= 2) {
+			if (lerpFrames[0] != undefined && lerpFrames[1] != undefined) {
+				for (var i = 0; i < lerpFrames[0].length ||	i < lerpFrames[1].length; i++) {
+					if (lerpFrames[0][i].id == lerpFrames[1][i].id && lerpFrames[0][i].id != undefined) {
+						if (indexFromId(PLAYERS, lerpFrames[0][i].id) == -1) {
+							PLAYERS.push(new Bubble(lerpFrames[0][i].x, lerpFrames[0][i].y));
+							PLAYERS[PLAYERS.length - 1].id = lerpFrames[0][i].id;
+							scene.add(PLAYERS[PLAYERS.length - 1]);
+						}
+						var index = indexFromId(PLAYERS, lerpFrames[0][i].id);
+						PLAYERS[index].position.x = (1-t) * lerpFrames[0][i].position.x + t * lerpFrames[1][i].position.x;
+						PLAYERS[index].position.y = (1-t) * lerpFrames[0][i].position.y + t * lerpFrames[1][i].position.y;
+					}
+				}
+			}
+			if (t >= 1) {
+				lerpFrames[0] = lerpFrames[1];
+				lerpFrames[1] = frames[0];
+				frames.splice(0, 1);
+				t = 0;
+			}
+			t += 1/3.0;
+			if (t > 1.0) t = 1.0;
+		}
+		
+		requestFrame(main);
+	}
+	
+	function resetGame() {
+		scene.clear();
+		PLAYERS = [];
+		
+		scene.add(bigbubble);
+	}
+	
+	function startGame() {
+		var ip = (getParameterByName("ip") == null) ? "wss://buuuuble.herokuapp.com/" : getParameterByName("ip");
+		ws = new WebSocket(ip);
+		
+		ws.onopen = function() {
+			resetGame();
+			
+			ws.send("s" + document.getElementById("name").value);
+			
+			main();
+		}
+		ws.onmessage = function(m) {
+			var message = m.data;
+			var parsedMessage = JSON.parse(message.substring(1));
+			//update
+			if (message.startsWith('u')) {
+				frames.push(parsedMessage);
+			}
+			//add player
+			/*else if (message.startsWith('a')) {
+				PLAYERS.set(parsedMessage[0], new Player(parsedMessage[1].position.x, parsedMessage[1].position.y));
+			}*/
+			//get id
+			else if (message.startsWith('i')) {
+				playerid = message.substring(1);
+			}
+		}
+		ws.onclose = function() {
+			ws = null;
+		}
+		
+		document.getElementById("startGUI").style.visibility = "hidden";
+	}
+	
+	function handleResize(e) {
+		bigbubble.radius = window.innerHeight / 2 * renderer.ratio;
+	}
+	document.addEventListener("resize", handleResize);
+	function getParameterByName(name, url) {
+		if (!url) {
+		url = window.location.href;
+		}
+		name = name.replace(/[\[\]]/g, "\\$&");
+		var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
+			results = regex.exec(url);
+		if (!results) return null;
+		if (!results[2]) return '';
+		return decodeURIComponent(results[2].replace(/\+/g, " "));
+	}
+</script>
+</html>
