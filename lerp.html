@@ -23,7 +23,7 @@
 	</form>
 	</div>
 </body>
-	
+
 <script>
 	var renderer = new TWO.renderer(document.getElementById("canvas"));
 	var keyboard = new TWO.keyboard();
@@ -117,30 +117,22 @@
 		}
 		
 		//lerp
-		if (frames.length >= 2) {
-			if (lerpFrames[0] != undefined && lerpFrames[1] != undefined) {
-				for (var i = 0; i < lerpFrames[0].length ||	i < lerpFrames[1].length; i++) {
-					if (lerpFrames[0][i].id == lerpFrames[1][i].id && lerpFrames[0][i].id != undefined) {
-						if (indexFromId(PLAYERS, lerpFrames[0][i].id) == -1) {
-							PLAYERS.push(new Bubble(lerpFrames[0][i].x, lerpFrames[0][i].y));
-							PLAYERS[PLAYERS.length - 1].id = lerpFrames[0][i].id;
-							scene.add(PLAYERS[PLAYERS.length - 1]);
-						}
-						var index = indexFromId(PLAYERS, lerpFrames[0][i].id);
-						PLAYERS[index].position.x = (1-t) * lerpFrames[0][i].position.x + t * lerpFrames[1][i].position.x;
-						PLAYERS[index].position.y = (1-t) * lerpFrames[0][i].position.y + t * lerpFrames[1][i].position.y;
+		if (lerpFrames[0] != undefined && lerpFrames[1] != undefined) {
+			for (var i = 0; i < lerpFrames[0].length ||	i < lerpFrames[1].length; i++) {
+				if (lerpFrames[0][i].id == lerpFrames[1][i].id && lerpFrames[0][i].id != undefined) {
+					if (indexFromId(PLAYERS, lerpFrames[0][i].id) == -1) {
+						PLAYERS.push(new Bubble(lerpFrames[0][i].x, lerpFrames[0][i].y));
+						PLAYERS[PLAYERS.length - 1].id = lerpFrames[0][i].id;
+						scene.add(PLAYERS[PLAYERS.length - 1]);
 					}
+					var index = indexFromId(PLAYERS, lerpFrames[0][i].id);
+					PLAYERS[index].position.x = (1-t) * lerpFrames[0][i].position.x + t * lerpFrames[1][i].position.x;
+					PLAYERS[index].position.y = (1-t) * lerpFrames[0][i].position.y + t * lerpFrames[1][i].position.y;
 				}
 			}
-			if (t >= 1) {
-				lerpFrames[0] = lerpFrames[1];
-				lerpFrames[1] = frames[0];
-				frames.splice(0, 1);
-				t = 0;
-			}
-			t += 1/3.0;
-			if (t > 1.0) t = 1.0;
 		}
+		t += 1/3.0;
+		if (t > 1.0) t = 1.0;
 		
 		requestFrame(main);
 	}
@@ -168,7 +160,9 @@
 			var parsedMessage = JSON.parse(message.substring(1));
 			//update
 			if (message.startsWith('u')) {
-				frames.push(parsedMessage);
+				lerpFrames[0] = lerpFrames[1];
+				lerpFrames[1] = parsedMessage;
+				t = 0;
 			}
 			//add player
 			/*else if (message.startsWith('a')) {
