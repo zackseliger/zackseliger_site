@@ -18,7 +18,7 @@ var PAN_SPEED = 12;
 var BACK_COLOR = "#222";
 var TRASH_INTERVAL = 0.1;
 var TRASH_RARITY = 20;
-var PLAY_MUSIC = false;
+var PLAY_MUSIC = true;
 
 function checkCollision(obj1, obj2) {
 	return (obj1.x - obj1.width/2 < obj2.x + obj2.width/2 &&
