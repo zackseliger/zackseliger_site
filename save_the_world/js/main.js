@@ -41,6 +41,6 @@ window.onload = function() {
 	manager.addScene("title", new TitleScene(manager));
 	manager.addScene("inSpace", new InSpaceScene(manager));
 	manager.addScene("alienWorld", new AlienWorldScene(manager));
-	manager.change("alienWorld");
+	manager.change("title");
 	main();
 }
