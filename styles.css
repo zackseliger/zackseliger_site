@@ -1,0 +1,34 @@
+body {
+	font-family: Arial, sans-serif;
+	margin:40px auto;
+	max-width:800px;
+	line-height:1.6;
+	font-size:18px;
+	color:#444;
+	background-color: #FAFAFA;
+	padding:0 10px
+}
+h1,h2,h3{
+	text-align: center;
+	line-height:1.2
+}
+a {
+	color: white;
+	text-decoration: none;
+}
+a:hover {
+	color: #FF3333;
+}
+.text-link {
+	color: #FF3333;
+}
+.text-link:hover {
+	color: #333;
+}
+.block {
+	text-align: center;
+	display: inline-block;
+	width: 250px;
+	margin: 5px 5px 5px 5px;
+	background-color: #333;
+}
