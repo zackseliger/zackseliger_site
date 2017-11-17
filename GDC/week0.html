@@ -1,0 +1,29 @@
+<html>
+<head>
+	<link rel="stylesheet" type="text/css" href="../styles.css">
+	<title>Game Dev Club Setup</title>
+</head>
+<body>
+	<h1>Setup</h1>
+	<p>In this document, I will detail the parts I don't elsewhere: the setup.  We will cover the basic code (the webpage) and the text editor we will be using.</p>
+	
+	<p>Our text editor.  We use Notepad++.  I highly recommend it.  It's not too bloated and offers the features you really want in a code editor: syntax highlighting and suggestions.  It's really simple and can be downloaded as a zip file.  The download page is <a href="https://notepad-plus-plus.org/download/v7.5.1.html">here</a>.</p>
+	
+	<p>Now for the code.  The most basic part of our web-based game is the web page itself.  The code for it looks like this:</p>
+	
+	<p class="code">
+	&lt;html&gt;<br />
+	&lt;script src="main.js"&gt;&lt;/script&gt;<br />
+	&lt;canvas id="canvas" width="100" height="100"&gt;&lt;/canvas&gt;<br />
+	&lt;/html&gt;<br />
+	</p>
+	
+	<p>This code creates a canvas, which is what our game is drawn on.  You can read more about them <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Element/canvas">here</a>.  The script tag the line before it tells the webpage to import and execute the code in main.js.  The html tags start and end our document.</p>
+	
+	<h2>Files</h2>
+	<p>We are calling our webpage file "index.html"  That is the customary "home page" name for a website file.  The extension ".html" specifies that it is a webpage document.  For the sake of brevity, I won't go in-depth into this file, but you can do some more research on your own if you are interested.</p>
+	<p>Our Javascript file is called "main.js" and is in the same directory as our website file.  This is our script file and contains all of instructions for how to run our game.  In future weeks I will only show updates to this file, as our html file won't need any more instructions.</p>
+	
+	<h2>Source code</h2>
+	<p>Every week, I will be putting the full source code on Github.  You can download it if you can't make a meeting or are joining us late.  <a href="https://github.com/twist177/gdc">Here</a> is that link.</p>
+</body>

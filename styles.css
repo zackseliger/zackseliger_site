@@ -12,18 +12,21 @@ h1,h2,h3{
 	text-align: center;
 	line-height:1.2
 }
-a {
+.code {
+	border: 1px solid black;
+	background-color: #EEE;
+	font-family: courier new;
+}
+a.block {
 	color: white;
+	text-decoration: none;
+}
+a {
+	color: #43F;
 	text-decoration: none;
 }
 a:hover {
 	color: #FF3333;
-}
-.text-link {
-	color: #FF3333;
-}
-.text-link:hover {
-	color: #333;
 }
 .block {
 	text-align: center;
