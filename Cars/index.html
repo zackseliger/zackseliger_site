@@ -1,0 +1,165 @@
+<script src="gameIO.js"></script>
+<img id="car" src="img/car.png">
+<img id="wheel" src="img/wheel.png">
+<img id="dirt1" src="img/dirt1.png">
+<img id="dirt2" src="img/dirt2.png">
+<img id="dirt3" src="img/dirt3.png">
+<img id="dirt4" src="img/dirt4.png">
+<img id="smoke1" src="img/smoke1.png">
+<img id="smoke2" src="img/smoke2.png">
+<img id="smoke3" src="img/smoke3.png">
+<script>
+	function getElem( elem ) {
+		return document.getElementById( elem );
+	}
+	var game = new gameIO();
+	
+	window.onload = function() {
+		var renderer = new game.renderer();
+		renderer.clearScreen = false;
+		renderer.ctx.imageSmoothingEnabled = false;
+		renderer.c.style.backgroundColor = "#FFF";
+		var mouse = new game.mouse( renderer );
+		var controls = new game.keyboard();
+		
+		var particles = [];
+		function makeSmoke(x, y, num=1, xvel=2, yvel=-1) {
+			var imgname = "smoke" + Math.floor(Math.random() * 3 + 1);
+			var obj = new game.image(getElem(imgname), x, y);
+			obj.width = obj.image.width * 5;
+			obj.height = obj.image.height * 5;
+			obj.xvel = Math.random() * xvel - xvel/2;
+			obj.yvel = Math.random() * yvel;
+			obj.rotationRate = Math.random() * 0.5 - 0.25;
+			obj.dead = false;
+			particles.push(obj);
+			extrasScene.add(obj);
+		}
+		function makeDirt(x, y, num=1, xvel=2, yvel=-1) {
+			var imgname = "dirt" + Math.floor(Math.random() * 4 + 1);
+			var obj = new game.image(getElem(imgname), x, y);
+			obj.width = obj.image.width * 5;
+			obj.height = obj.image.height * 5;
+			obj.xvel = Math.random() * xvel - xvel/2;
+			obj.yvel = Math.random() * yvel;
+			obj.rotationRate = Math.random() * 0.5 - 0.25;
+			obj.dead = false;
+			particles.push(obj);
+			extrasScene.add(obj);
+		}
+		
+		var tilesScene = new game.scene();
+		var extrasScene = new game.scene();
+		var scene = new game.scene();
+		
+		game.addType(
+			"player",
+			function(obj, packet) {
+				obj.vel = 0;
+				obj.onTile = "empty";
+				obj.visual = new game.image(getElem("car"), 0, 0, getElem("car").width * 5, getElem("car").height * 5);
+				obj.frontWheel = new game.image(getElem("wheel"), 35, 15, getElem("wheel").width * 5, getElem("wheel").height * 5);
+				obj.backWheel = new game.image(getElem("wheel"), -35, 15, getElem("wheel").width * 5, getElem("wheel").height * 5);
+				scene.add(obj.visual);
+				scene.add(obj.frontWheel);
+				scene.add(obj.backWheel);
+			},
+			function(obj) {
+				//wheel position and rotation
+				obj.frontWheel.position.x = obj.visual.position.x + Math.cos(obj.visual.rotation) * 35 + Math.sin(obj.visual.rotation) * -15;
+				obj.frontWheel.position.y = obj.visual.position.y + Math.sin(obj.visual.rotation) * 35 + Math.cos(obj.visual.rotation) * 15;
+				obj.backWheel.position.x = obj.visual.position.x + Math.cos(obj.visual.rotation) * (-35) + Math.sin(obj.visual.rotation) * -15;
+				obj.backWheel.position.y = obj.visual.position.y + Math.sin(obj.visual.rotation) * -35 + Math.cos(obj.visual.rotation) * 15;
+				obj.frontWheel.rotation += obj.vel / 20;
+				obj.backWheel.rotation += obj.vel / 20;
+				
+				//smoke particles
+				if (Math.abs(obj.vel) > 9) {
+					if (obj.onTile == "road") {
+						makeSmoke(obj.frontWheel.position.x, obj.frontWheel.position.y, 1);
+						makeSmoke(obj.backWheel.position.x, obj.backWheel.position.y, 1);
+					}
+					else if (obj.onTile == "dirt") {
+						makeDirt(obj.frontWheel.position.x, obj.frontWheel.position.y, 1);
+						makeDirt(obj.backWheel.position.x, obj.backWheel.position.y, 1);
+					}
+				}
+			},
+			function(obj, packet) {
+				obj.vel = packet.vel;
+				obj.onTile = packet.onTile;
+			},
+			function(obj) {
+				scene.remove(obj.frontWheel);
+				scene.remove(obj.backWheel);
+			}
+		);
+		game.addType(
+			"tile",
+			function(obj, packet) {
+				obj.visual = new game.rectangle(packet.x, packet.y, packet.width, packet.height);
+				obj.visual.width = packet.width;
+				obj.visual.height = packet.height;
+				obj.tileType = packet.tileType;
+				if (obj.tileType == "road") {
+					obj.visual.color = "#333";
+				}
+				else if (obj.tileType == "dirt") {
+					obj.visual.color = "#845640";
+				}
+				tilesScene.add(obj.visual);
+			},
+			function(obj) {
+				
+			},
+			function(obj, packet) {
+				
+			},
+			function(obj) {
+				scene.remove(obj);
+			}
+		)
+		
+		game.createSocket("ws://buuuuble.herokuapp.com");
+		
+		function main() {
+			controls.changedKeys.forEach(function(key) {
+				game.currentPackets.push({
+					type: "updateControls",
+					object: {
+						key: key,
+						state: controls[key]
+					}
+				});
+			});
+			controls.changedKeys = [];
+			game.update();
+			scene.camera.position = new game.Vector2(game.me.visual.position.x, game.me.visual.position.y);
+			extrasScene.camera.position = scene.camera.position;
+			tilesScene.camera.position = scene.camera.position;
+			
+			for (var i = 0; i < particles.length; i++) {
+				particles[i].position.x += particles[i].xvel;
+				particles[i].position.y += particles[i].yvel;
+				particles[i].rotation += particles[i].rotationRate;
+				particles[i].opacity -= Math.random() * 0.025;
+				particles[i].yvel -= 0.01;
+				if (particles[i].opacity <= 0.01) {
+					particles[i].dead = true;
+				}
+				if (particles[i].dead) {
+					extrasScene.remove(particles[i]);
+					particles.splice(i, 1);
+					i--;
+				}
+			}
+			
+			renderer.clear();
+			renderer.render(tilesScene);
+			renderer.render(extrasScene);
+			renderer.render(scene);
+			requestFrame(main);
+		}
+		main();
+	}
+</script>
