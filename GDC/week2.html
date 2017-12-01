@@ -1,104 +1,35 @@
 <html>
 <head>
 	<link rel="stylesheet" type="text/css" href="../styles.css">
+	<link rel="stylesheet" href="http://cdn.jsdelivr.net/gh/highlightjs/cdn-release@9.12.0/build/styles/default.min.css">
+	<script src="http://cdn.jsdelivr.net/gh/highlightjs/cdn-release@9.12.0/build/highlight.min.js"></script>
+	<script>hljs.initHighlightingOnLoad();</script>
 	<title>Game Dev Club Week 2</title>
 </head>
 <body>
-	<h1>Week2</h1>
+	<h1>Week 2</h1>
 	<p></p>
 	
 	<p>This week we integrated keyboard input into our game.  We created a function that will redraw the screen at 60 frames per second, where we now clear the screen before drawing another frame.  Here is the updated code:</p>
 	
-	<p class="code">
-	var x = 10;<br />
-	var y = 10;<br />
-	<br />
-	window.onload = function() {<br />
-	&#8195;canvas = document.getElementById("canvas");<br />
-	&#8195;ctx = canvas.getContext("2d");<br />
-	<br />
-	&#8195;document.addEventListener("keydown", keydown);<br />
-	&#8195;setInterval(main, 1/60 * 1000);<br />
-	}<br />
-	<br />
-	function main() {<br />
-	&#8195;//render<br />
-	&#8195;ctx.fillStyle = "#FFF";<br />
-	&#8195;ctx.fillRect(0,0,100,100);<br />
-	&#8195;ctx.fillStyle = "#000";<br />
-	&#8195;ctx.fillRect(x, y, 20, 20);<br />
-	}<br />
-	<br />
-	function keydown(e) {<br />
-	&#8195;switch(e.keyCode) {<br />
-	&#8195;&#8195;case 37:<br />
-	&#8195;&#8195;&#8195;x -= 1;<br />
-	&#8195;&#8195;&#8195;break;<br />
-	&#8195;&#8195;case 38:<br />
-	&#8195;&#8195;&#8195;y -= 1;<br />
-	&#8195;&#8195;&#8195;break;<br />
-	&#8195;&#8195;case 39:<br />
-	&#8195;&#8195;&#8195;x += 1;<br />
-	&#8195;&#8195;&#8195;break;<br />
-	&#8195;&#8195;case 40:<br />
-	&#8195;&#8195;&#8195;y += 1;<br />
-	&#8195;&#8195;&#8195;break;<br />
-	&#8195;}<br />
-	}<br />
-	</p>
+	<pre><code class="javascript">var x = 10;&#10;var y = 10;&#10;&#10;window.onload = function() {&#10;&#9;canvas = document.getElementById(&#34;canvas&#34;);&#10;&#9;ctx = canvas.getContext(&#34;2d&#34;);&#10;&#10;&#9;document.addEventListener(&#34;keydown&#34;, keydown);&#10;&#9;setInterval(main, 1/60 * 1000);&#10;}&#10;&#10;function main() {&#10;&#9;//render&#10;&#9;ctx.fillStyle = &#34;#FFF&#34;;&#10;&#9;ctx.fillRect(0,0,100,100);&#10;&#9;ctx.fillStyle = &#34;#000&#34;;&#10;&#9;ctx.fillRect(x, y, 20, 20);&#10;}&#10;&#10;function keydown(e) {&#10;&#9;switch(e.keyCode) {&#10;&#9;&#9;case 37:&#10;&#9;&#9;&#9;x -= 1;&#10;&#9;&#9;&#9;break;&#10;&#9;&#9;case 38:&#10;&#9;&#9;&#9;y -= 1;&#10;&#9;&#9;&#9;break;&#10;&#9;&#9;case 39:&#10;&#9;&#9;&#9;x += 1;&#10;&#9;&#9;&#9;break;&#10;&#9;&#9;case 40:&#10;&#9;&#9;&#9;y += 1;&#10;&#9;&#9;&#9;break;&#10;&#9;}&#10;}</code></pre>
 	
 	<p>Since we have added a lot of code since last week, I'll try my best to break it down into smaller sections to dissect.</p>
 	<h2>The window.onload() function</h2>
-	<p class="code">
-	var x = 10;<br />
-	var y = 10;<br />
-	<br />
-	window.onload = function() {<br />
-	&#8195;canvas = document.getElementById("canvas");<br />
-	&#8195;ctx = canvas.getContext("2d");<br />
-	<br />
-	&#8195;document.addEventListener("keydown", keydown);<br />
-	&#8195;setInterval(main, 1/60 * 1000);<br />
-	}<br />
-	</p>
+	<pre><code class="javascript">var x = 10;&#10;var y = 10;&#10;&#10;window.onload = function() {&#10;&#9;canvas = document.getElementById(&#34;canvas&#34;);&#10;&#9;ctx = canvas.getContext(&#34;2d&#34;);&#10;&#10;&#9;document.addEventListener(&#34;keydown&#34;, keydown);&#10;&#9;setInterval(main, 1/60 * 1000);&#10;}</code></pre>
 	<p>We are now using variables, called x and y, to change where our square is drawn.  More on that later.  We get rid of "var" before canvas and ctx because we want them to be global variables.  Previously, they only existed in that function, window.onload.  Now, we can use them anywhere in our document.</p>
 	
-	<p class="code">document.addEventListener("keydown", keydown);</p>
+	<pre><code class="javascript">document.addEventListener("keydown", keydown);</code></pre>
 	<p>document.addEventListener() is used to call a function when an event happens.  Here we use the event "keydown" (the first one, in quotes), and call the keydown function that we define later.  <a href="https://developer.mozilla.org/en-US/docs/Web/Events">Here</a> is a list of all Javascript events.</p>
 	
-	<p class="code">setInterval(main, 1/60 * 1000);</p>
+	<pre><code class="javascript">setInterval(main, 1/60 * 1000);</code></pre>
 	<p>The setInterval() function is used to call a function at a set interval, defined in milliseconds.  Here, we call the main function every 0.016 seconds.  <a href="https://developer.mozilla.org/en-US/docs/Web/API/WindowOrWorkerGlobalScope/setInterval">Here</a> is the relevant MDN article about setInterval().</p>
 	
 	<h2>The main() function</h2>
-	<p class="code">
-	function main() {<br />
-	&#8195;//render<br />
-	&#8195;ctx.fillStyle = "#FFF";<br />
-	&#8195;ctx.fillRect(0,0,100,100);<br />
-	&#8195;ctx.fillStyle = "#000";<br />
-	&#8195;ctx.fillRect(x, y, 20, 20);<br />
-	}<br />
-	</p>
+	<pre><code class="javascript">function main() {&#10;&#9;//render&#10;&#9;ctx.fillStyle = &#34;#FFF&#34;;&#10;&#9;ctx.fillRect(0,0,100,100);&#10;&#9;ctx.fillStyle = &#34;#000&#34;;&#10;&#9;ctx.fillRect(x, y, 20, 20);&#10;}</code></pre>
 	<p>Here, we draw our square, using the x and y variables to specify location.  I have also included an additional fillRect() function to clear the canvas back to white in a 100x100 square, which is the size of our canvas.  This is like stacking layers of paint on top of each other.  The computer is now constantly drawing a white square on top of the previous frame.</p>
 	
 	<h2>The keydown(e) function</h2>
-	<p class="code">
-	function keydown(e) {<br />
-	&#8195;switch(e.keyCode) {<br />
-	&#8195;&#8195;case 37:<br />
-	&#8195;&#8195;&#8195;x -= 1;<br />
-	&#8195;&#8195;&#8195;break;<br />
-	&#8195;&#8195;case 38:<br />
-	&#8195;&#8195;&#8195;y -= 1;<br />
-	&#8195;&#8195;&#8195;break;<br />
-	&#8195;&#8195;case 39:<br />
-	&#8195;&#8195;&#8195;x += 1;<br />
-	&#8195;&#8195;&#8195;break;<br />
-	&#8195;&#8195;case 40:<br />
-	&#8195;&#8195;&#8195;y += 1;<br />
-	&#8195;&#8195;&#8195;break;<br />
-	&#8195;}<br />
-	}<br />
-	</p>
+	<pre><code class="javascript">function keydown(e) {&#10;&#9;switch(e.keyCode) {&#10;&#9;&#9;case 37:&#10;&#9;&#9;&#9;x -= 1;&#10;&#9;&#9;&#9;break;&#10;&#9;&#9;case 38:&#10;&#9;&#9;&#9;y -= 1;&#10;&#9;&#9;&#9;break;&#10;&#9;&#9;case 39:&#10;&#9;&#9;&#9;x += 1;&#10;&#9;&#9;&#9;break;&#10;&#9;&#9;case 40:&#10;&#9;&#9;&#9;y += 1;&#10;&#9;&#9;&#9;break;&#10;&#9;}&#10;}</code></pre>
 	<p>This function is called when a key is pressed.  This is our first function with an argument, "e".  We can call it anything, although I chose "e" as short for "event."  This variable contains information about the event that occured.  Since we have a keydown event, e.keyCode will contain information about which button is pressed.  We use a switch statement to update x or y according to which button is pressed.  For interactive information on key codes, click <a href="http://keycode.info/">here</a>.</p>
 </body>

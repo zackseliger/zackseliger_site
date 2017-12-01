@@ -1,6 +1,9 @@
 <html>
 <head>
 	<link rel="stylesheet" type="text/css" href="../styles.css">
+	<link rel="stylesheet" href="http://cdn.jsdelivr.net/gh/highlightjs/cdn-release@9.12.0/build/styles/default.min.css">
+	<script src="http://cdn.jsdelivr.net/gh/highlightjs/cdn-release@9.12.0/build/highlight.min.js"></script>
+	<script>hljs.initHighlightingOnLoad();</script>
 	<title>Game Dev Club Setup</title>
 </head>
 <body>
@@ -11,12 +14,10 @@
 	
 	<p>Now for the code.  The most basic part of our web-based game is the web page itself.  The code for it looks like this:</p>
 	
-	<p class="code">
-	&lt;html&gt;<br />
-	&lt;script src="main.js"&gt;&lt;/script&gt;<br />
-	&lt;canvas id="canvas" width="100" height="100"&gt;&lt;/canvas&gt;<br />
-	&lt;/html&gt;<br />
-	</p>
+	<pre><code class="html">&lt;html&gt;
+	&lt;script src=&quot;main.js&quot;&gt;&lt;/script&gt;
+	&lt;canvas id=&quot;canvas&quot; width=&quot;100&quot; height=&quot;100&quot;&gt;&lt;/canvas&gt;
+&lt;/html&gt;</code></pre>
 	
 	<p>This code creates a canvas, which is what our game is drawn on.  You can read more about them <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Element/canvas">here</a>.  The script tag the line before it tells the webpage to import and execute the code in main.js.  The html tags start and end our document.</p>
 	

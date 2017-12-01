@@ -1,28 +1,29 @@
 <html>
 <head>
 	<link rel="stylesheet" type="text/css" href="../styles.css">
+	<link rel="stylesheet" href="http://cdn.jsdelivr.net/gh/highlightjs/cdn-release@9.12.0/build/styles/default.min.css">
+	<script src="http://cdn.jsdelivr.net/gh/highlightjs/cdn-release@9.12.0/build/highlight.min.js"></script>
+	<script>hljs.initHighlightingOnLoad();</script>
 	<title>Game Dev Club Week 1</title>
 </head>
 <body>
 	<h1>Week 1</h1>
 	<p>This article is created to explain the code we worked on last week.  I improvised the lesson this week so there is some bad code, but it's okay.  Hopefully I will address all the questions you had about the code.  If you have any more, I would suggest checking out the resources on <a href="https://www.w3schools.com/">W3schools</a> or the <a href="https://developer.mozilla.org/en-US/docs/Web">MDN web docs</a>.  That said, here is the code:</p>
 	
-	<p class="code">
-	window.onload = function() {<br />
-	&#8195;var canvas = document.getElementById("canvas");<br />
-	&#8195;var ctx = canvas.getContext("2d");<br />
-	<br />
-	&#8195;ctx.fillStyle = "#000";<br />
-	&#8195;ctx.fillRect(10, 10, 20, 20);<br />
-	}<br />
-	</p>
+	<pre><code class="javascript">window.onload = function() {
+	var canvas = document.getElementById("canvas");
+	var ctx = canvas.getContext("2d");
+	
+	ctx.fillStyle = "#000";
+	ctx.fillRect(10, 10, 20, 20);
+}</code></pre>
 	
 	<p>First off, window.onload.  This function is defined by the browser, as in the window object.  As you can see, we actually define a variable in the same line that we set it to equal window.onload.  This type of function declaration is actually done a lot in Javascript.</p>
 	<p>Next line.  The document object is defined by the browser.  This function getElementById() allows us to pick an object from the web browser and manipulate it in Javascript.  In this case, we get the canvas, which is what we draw on.</p>
 	<p>The ctx variable.  This is our drawing context.  It's an important object, and we will always use it to draw to our canvas. <a href="https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D">Here</a> is the article about this object on MDN.</p>
 	
-	<span class="code">ctx.fillStyle = "#000";</span><p>The fillStyle variable refers to the color that objects will be filled.  We can make an outline of a rectangle, but instead we "filled" it.  #000 is a hexidecimal number.  You can read more about hex and how that relates to colors <a href="https://www.w3schools.com/html/html_colors.asp">here</a>.  The part about hex is about midway through that article.</p>
-	<span class="code">ctx.fillRect(10, 10, 20, 20);</span><p>Here, we tell the canvas graphics to fill a rectangle.  The parameters are (x coordinate, y coordinate, width, height).  The x and y coordinates refer to the top-left of the rectangle too.  You can see the official MDN documentation and play with the function <a href="https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/fillRect">here</a>.</p>
+	<pre><code class="javascript">ctx.fillStyle = "#000";</code></pre>The fillStyle variable refers to the color that objects will be filled.  We can make an outline of a rectangle, but instead we "filled" it.  #000 is a hexidecimal number.  You can read more about hex and how that relates to colors <a href="https://www.w3schools.com/html/html_colors.asp">here</a>.  The part about hex is about midway through that article.</p>
+	<pre><code class="javascript">ctx.fillRect(10, 10, 20, 20);</code></pre><p>Here, we tell the canvas graphics to fill a rectangle.  The parameters are (x coordinate, y coordinate, width, height).  The x and y coordinates refer to the top-left of the rectangle too.  You can see the official MDN documentation and play with the function <a href="https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/fillRect">here</a>.</p>
 	<hr />
 	<p>I also want to mention that we run this code once.  When the window loads, we draw the rectangle once and then stop.  This is because we are not clearing the screen as you would in an actual game.</p>
 </body>
