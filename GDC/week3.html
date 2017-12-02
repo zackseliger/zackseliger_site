@@ -1,0 +1,30 @@
+<html>
+<head>
+	<link rel="stylesheet" type="text/css" href="../styles.css">
+	<link rel="stylesheet" href="http://cdn.jsdelivr.net/gh/highlightjs/cdn-release@9.12.0/build/styles/default.min.css">
+	<script src="http://cdn.jsdelivr.net/gh/highlightjs/cdn-release@9.12.0/build/highlight.min.js"></script>
+	<script>hljs.initHighlightingOnLoad();</script>
+	<title>Game Dev Club Week 2</title>
+</head>
+<body>
+	<h1>Week 3</h1>
+	<p>This week, we changed how we handled keyboard input, and abstracted out Rectangle into a class.  Now, moving the player feels smoother and we can create as many rectangles as we want to in a simple manner.</p>
+	
+	<p>I will skip showing our full code base, as it's getting substantial at this point.  If you would like to view the whole, uninterrupted code, I upload it on <a href="https://github.com/Twist177/GDC">Github</a> every week.</p>
+	
+	<h2>The Rectangle class</h2>
+	<pre><code class="javascript">class Rectangle {&#10;&#9;constructor(x, y, w, h) {&#10;&#9;&#9;this.x = x;&#10;&#9;&#9;this.y = y;&#10;&#9;&#9;this.width = w;&#10;&#9;&#9;this.height = h;&#10;&#9;&#9;this.color = &#34;#000&#34;;&#10;&#9;&#9;&#10;&#9;&#9;this.left = false;&#10;&#9;&#9;this.right = false;&#10;&#9;&#9;this.up = false;&#10;&#9;&#9;this.down = false;&#10;&#9;}&#10;&#9;update() {&#10;&#9;&#9;if (this.left == true) {&#10;&#9;&#9;&#9;this.x -= 1;&#10;&#9;&#9;}&#10;&#9;&#9;if (this.right == true) {&#10;&#9;&#9;&#9;this.x += 1;&#10;&#9;&#9;}&#10;&#9;&#9;if (this.up == true) {&#10;&#9;&#9;&#9;this.y -= 1;&#10;&#9;&#9;}&#10;&#9;&#9;if (this.down == true) {&#10;&#9;&#9;&#9;this.y += 1;&#10;&#9;&#9;}&#10;&#9;}&#10;&#9;render() {&#10;&#9;&#9;ctx.fillStyle = this.color;&#10;&#9;&#9;ctx.fillRect(this.x, this.y, this.width, this.height);&#10;&#9;}&#10;}</code></pre>
+	<p>This class is the major addition this week.  You can read more about classes <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Classes">here</a>.  We have replaced the global variables x and y with fields in this class, and essentially copied the render method from main.  This allows our code to become much more reusable.  The left, right, up, and down fields help us with user input, along with the update function, which will be covered shortly.</p>
+	
+	<pre><code class="javascript">var player = new Rectangle(10, 10, 20, 20);</code></pre>
+	<p>This is how we now instantiate our player.  It is much easier and more extensible.</p>
+	
+	<h2>the main() function</h2>
+	<pre><code class="javascript">function main() {&#10;&#9;//update&#10;&#9;player.update();&#10;&#9;&#10;&#9;//clear screen&#10;&#9;ctx.fillStyle = &#34;#FFF&#34;;&#10;&#9;ctx.fillRect(0,0,100,100);&#10;&#9;//render&#10;&#9;player.render();&#10;}</code></pre>
+	<p>Now, instead of having to put all the details of everybody's update routine in the main function, we can now simply call update() and render() for every object that needs it.  Although this model can be abstracted further, our program is not complex enough for it to be beneficial.</p>
+	
+	<h2>The keyup(e) function</h2>
+	<pre><code class="javascript">function keyup(e) {&#10;&#9;switch(e.keyCode) {&#10;&#9;&#9;case 37:&#10;&#9;&#9;&#9;player.left = false;&#10;&#9;&#9;&#9;break;&#10;&#9;&#9;case 38:&#10;&#9;&#9;&#9;player.up = false;&#10;&#9;&#9;&#9;break;&#10;&#9;&#9;case 39:&#10;&#9;&#9;&#9;player.right = false;&#10;&#9;&#9;&#9;break;&#10;&#9;&#9;case 40:&#10;&#9;&#9;&#9;player.down = false;&#10;&#9;&#9;&#9;break;&#10;&#9;}&#10;}</code></pre>
+	<p>The new function we added is keyup, which we also added by using document.addEventListener() with the "keyup" argument.  This mirrors the new keydown function, although player.left, right, up, and down are set to true in the keydown function.  This is necessary for our new way of processing keyboard input.  The actual change in location is done from the player.update() call in main.</p>
+</body>
+</html>

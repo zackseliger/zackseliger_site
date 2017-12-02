@@ -12,10 +12,8 @@ h1,h2,h3{
 	text-align: center;
 	line-height:1.2
 }
-.code {
-	border: 1px solid black;
-	background-color: #EEE;
-	font-family: courier new;
+code {
+	font-size: 15px;
 }
 a.block {
 	color: white;
