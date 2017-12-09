@@ -26,7 +26,5 @@
 	<p>Our Rectangle.update() function has grown quite a lot since last week because of the code we added to handle collision.  We use variables prevx and prevy to store the positions before we move our rectangles, and if they collide on any axis, we move them back on the according axis.  It's important that we keep our axes separate, because if we just checked and moved back after moving the rectangle on both axes, it would be impossible to "slide" along the surface of the recangle as we can here.</p>
 	<pre><code class="javascript">for (var i = 0; i &lt; rectArray.length; i++) {&#10;&#9;if (rectArray[i] != this &amp;&amp; checkCollision(this, rectArray[i])) {&#10;&#9;&#9;this.x = prevx;&#10;&#9;}&#10;}</code></pre>
 	<p>This code is important to understand.  We iterate through every rectangle and test for collision with it.  If it has collided, we move the rectangle back to where it was last frame on the x axis.  Before checking collision with any rectangle, though, we have to make sure that rectArray[i] doesn't reference the same rectangle we're moving.  If we didn't include that first part on that if statement, we would always be "colliding" with ourselves, and unable to move.</p>
-	
-	<hr/>
 </body>
 </html>
