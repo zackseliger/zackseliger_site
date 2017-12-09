@@ -1,0 +1,32 @@
+<html>
+<head>
+	<link rel="stylesheet" type="text/css" href="../styles.css">
+	<link rel="stylesheet" href="http://cdn.jsdelivr.net/gh/highlightjs/cdn-release@9.12.0/build/styles/default.min.css">
+	<script src="http://cdn.jsdelivr.net/gh/highlightjs/cdn-release@9.12.0/build/highlight.min.js"></script>
+	<script>hljs.initHighlightingOnLoad();</script>
+	<title>Game Dev Club Week 2</title>
+</head>
+<body>
+	<h1>Week 4</h1>
+	<p>This week, we added a collision function.  Using the Rectangle class, we created another two rectangles to collide with.  We also created an array to store all of out rectangles and made our code more extensible.  If you are unfamiliar with arrays, <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array">this</a> article would be a good read.  Because of arrays, it now only requires one line of code to add a rectangle you can see and collide with.  Let's take a look at the major changes we made.</p>
+	
+	<h2>The collision function</h2>
+	<pre><code class="javascript">function checkCollision(rect1, rect2) {&#10;&#9;return  (rect1.x &lt; rect2.x + rect2.width &amp;&amp;&#10;&#9;&#9;&#9;rect1.x + rect1.width &gt; rect2.x &amp;&amp;&#10;&#9;&#9;&#9;rect1.y &lt; rect2.y + rect2.height &amp;&amp;&#10;&#9;&#9;&#9;rect1.height + rect1.y &gt; rect2.y);&#10;}</code></pre>
+	<p>This function takes two rectangles.  It returns true if the two rectangles are colliding and false if they are not.  Since our x and y variables refer to the left and top of the rectangle, the right and bottom are found by adding the width and height of the rectangle.  I actually copied this code <a href="https://developer.mozilla.org/en-US/docs/Games/Techniques/2D_collision_detection">directly from MDN</a>.<p>
+	
+	<h2>rectArray and main()</h2>
+	<p>We now use an array called rectArray to store our variables.  We now have three rectangles, and our main function looks much simpler.</p>
+	<pre><code class="javascript">var player = new Rectangle(10, 10, 20, 20);&#10;var rect1 = new Rectangle(40, 40, 20, 10);&#10;var rectArray = [];&#10;rectArray.push(player);&#10;rectArray.push(rect1);&#10;rectArray.push(new Rectangle(50,60,10,10));</code></pre>
+	<p>To add a rectangle, we can simply add it to this array and it will be rendered, updated, and collided with.  In order to add this functionality, we modified main, and it now looks like this:</p>
+	<pre><code class="javascript">function main() {&#10;&#9;//clear screen&#10;&#9;ctx.fillStyle = &#34;#FFF&#34;;&#10;&#9;ctx.fillRect(0,0,100,100);&#10;&#9;&#10;&#9;//update and render&#10;&#9;for (var i = 0; i &lt; rectArray.length; i++) {&#10;&#9;&#9;rectArray[i].update();&#10;&#9;&#9;rectArray[i].render();&#10;&#9;}&#10;}</code></pre>
+	<p>We use the for loop to iterate through our array and update and render them.  <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/statements/for">Here</a> is the MDN article on for loops.  It's important that we draw our objects after we clear the screen, otherwise it will simply write over what we've just drawn.</p>
+	
+	<h2>The Rectangle.update() function</h2>
+	<pre><code class="javascript">update() {&#10;&#9;var prevx = this.x;&#10;&#9;var prevy = this.y;&#10;&#9;&#10;&#9;if (this.left == true) {&#10;&#9;&#9;this.x -= 1;&#10;&#9;}&#10;&#9;if (this.right == true) {&#10;&#9;&#9;this.x += 1;&#10;&#9;}&#10;&#9;for (var i = 0; i &lt; rectArray.length; i++) {&#10;&#9;&#9;if (rectArray[i] != this &amp;&amp; checkCollision(this, rectArray[i])) {&#10;&#9;&#9;&#9;this.x = prevx;&#10;&#9;&#9;}&#10;&#9;}&#10;&#9;&#10;&#9;if (this.up == true) {&#10;&#9;&#9;this.y -= 1;&#10;&#9;}&#10;&#9;if (this.down == true) {&#10;&#9;&#9;this.y += 1;&#10;&#9;}&#10;&#9;for (var i = 0; i &lt; rectArray.length; i++) {&#10;&#9;&#9;if (rectArray[i] != this &amp;&amp; checkCollision(this, rectArray[i])) {&#10;&#9;&#9;&#9;this.y = prevy;&#10;&#9;&#9;}&#10;&#9;}&#10;}</code></pre>
+	<p>Our Rectangle.update() function has grown quite a lot since last week because of the code we added to handle collision.  We use variables prevx and prevy to store the positions before we move our rectangles, and if they collide on any axis, we move them back on the according axis.  It's important that we keep our axes separate, because if we just checked and moved back after moving the rectangle on both axes, it would be impossible to "slide" along the surface of the recangle as we can here.</p>
+	<pre><code class="javascript">for (var i = 0; i &lt; rectArray.length; i++) {&#10;&#9;if (rectArray[i] != this &amp;&amp; checkCollision(this, rectArray[i])) {&#10;&#9;&#9;this.x = prevx;&#10;&#9;}&#10;}</code></pre>
+	<p>This code is important to understand.  We iterate through every rectangle and test for collision with it.  If it has collided, we move the rectangle back to where it was last frame on the x axis.  Before checking collision with any rectangle, though, we have to make sure that rectArray[i] doesn't reference the same rectangle we're moving.  If we didn't include that first part on that if statement, we would always be "colliding" with ourselves, and unable to move.</p>
+	
+	<hr/>
+</body>
+</html>
