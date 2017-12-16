@@ -1,0 +1,33 @@
+<html>
+<head>
+	<link rel="stylesheet" type="text/css" href="../styles.css">
+	<link rel="stylesheet" href="http://cdn.jsdelivr.net/gh/highlightjs/cdn-release@9.12.0/build/styles/default.min.css">
+	<script src="http://cdn.jsdelivr.net/gh/highlightjs/cdn-release@9.12.0/build/highlight.min.js"></script>
+	<script>hljs.initHighlightingOnLoad();</script>
+	<title>Game Dev Club Week 5</title>
+</head>
+<body>
+	<h1>Week 5</h1>
+	<p>This week, we extended the Rectangle class to create a Coin class.  Because of the way classes work, we were able to reuse most of the code, except for the render function.  We grabbed an image of a coin and rendered it.  Additionally, we created a new array for coins only and made players (rectangles) able to 'pick up' the coin by removing it from the coin array when colliding.  We made the canvas the size of the screen so our game will take up the whole screen, which involved editing the canvas.  Let's take a look at the code.</p>
+	
+	<h2>The Coin class and loading our image</h2>
+	<pre><code class="javascript">var coinImage = new Image();&#10;coinImage.src = &#34;coin.png&#34;;&#10;&#10;class Coin extends Rectangle {&#10;&#9;constructor(x, y, w, h) {&#10;&#9;&#9;super(x, y, w, h);&#10;&#9;&#9;this.image = coinImage;&#10;&#9;}&#10;&#9;render() {&#10;&#9;&#9;ctx.drawImage(this.image, this.x, this.y, this.width, this.height);&#10;&#9;}&#10;}</code></pre>
+	<p>We created an image variable called coinImage.  This is how we load images, with coin.png being the file that we load.  Our coin class is pretty self-explanatory, the only major difference between it and the Rectangle class is the render function.  <a href="https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/drawImage">Here</a> is the appropriate MDN article on drawImage().<p>
+	
+	<h2>coinArray</h2>
+	<p>We now use a separate array for coins.  This allows us to use different collision functions for rectangles and coins.  I'll skip the declaration of it and putting things into it to talk about the changes to main() and the Rectangle class.</p>
+	<pre><code class="javascript">for (var i = 0; i &lt; coinArray.length; i++) {&#10;&#9;coinArray[i].update();&#10;&#9;coinArray[i].render();&#10;}</code></pre>
+	<p>This code goes in main() and makes sure we update and draw all the elements in coinArray, similar to how we did with rectArray.</p>
+	<pre><code class="javascript">for (var i = 0; i &lt; coinArray.length; i++) {&#10;&#9;if (coinArray[i] != this &amp;&amp; checkCollision(this, coinArray[i])) {&#10;&#9;&#9;coinArray.splice(i, 1);&#10;&#9;}&#10;}</code></pre>
+	<p>The above piece of code goes in our Rectangle update() function, at the end.  This code deletes a coin if a rectangle collides with it, splice() being the function that gets rid of the object.  You can read more about it <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/splice">here</a>.</p>
+	
+	<h2>Changes to the canvas</h2>
+	<p>We changed our index.html.  It now looks like this:</p>
+	<pre><code class="javascript">&lt;html&gt;&#10;&lt;body style=&#34;margin: 0&#34;&gt;&#10;&#9;&lt;script src=&#34;main.js&#34;&gt;&lt;/script&gt;&#10;&#9;&lt;canvas id=&#34;canvas&#34; width=&#34;0&#34; height=&#34;0&#34;&gt;&lt;/canvas&gt;&#10;&lt;/body&gt;&#10;&lt;/html&gt;</code></pre>
+	<p>We now have a body with margins set to 0.  This is so that our canvas can take up the entire screen, as each html document by default has a non-zero margin.  I also set the canvas width and height to 0 to show that whatever this value is doesn't matter with our addition to main.js.</p>
+	<pre><code class="javascript">canvas.width = window.innerWidth;&#10;canvas.height = window.innerHeight;</code></pre>
+	<p>The above code is placed immediately after we declare the canvas variable in our window.onload function.  This sets our canvas' height and width to that of the screen.  To make this work with the rest of our program, we now need to clear the rest of our screen before we draw.  That code will look like this:</p>
+	<pre><code class="javascript">//clear screen&#10;ctx.fillStyle = &#34;#FFF&#34;;&#10;ctx.fillRect(0,0,window.innerWidth,window.innerHeight);</code></pre>
+	<p>We now use the width and height of the screen as the width and height of our white rectangle to clear the screen.  Now there won't be trails of our player following us when we go outside our 100x100 square that we had before.</p>
+</body>
+</html>
