@@ -5,9 +5,10 @@ var characters = new Collection();
 var weapons = new Collection();
 var bullets = new Collection();
 var tiles = new Collection();
-
-var stage = 1;
-var money = 0;
+//editor things
+var editorSelected = null;
+var currentLevel = "";
+var inEditor = false;
 
 function main() {
 	FRAME.clearScreen();
@@ -30,9 +31,10 @@ window.onload = function() {
 	player = new Player(0, 0);
 	floor = new FloorRect(0, 0);
 	
-	manager.addScene("shop", new ShopScene(manager));
+	manager.addScene("menu", new MenuScene(manager));
+	manager.addScene("editor", new EditorScene(manager));
 	manager.addScene("fight", new FightScene(manager));
-	manager.change("shop");
+	manager.change("menu");
 	
 	FRAME.width = GAME_WIDTH;
 	FRAME.height = GAME_HEIGHT;

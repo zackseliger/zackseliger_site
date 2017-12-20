@@ -33,20 +33,23 @@ class Scene {
 	onUnload() {}
 }
 
-class ShopScene extends Scene {
+class MenuScene extends Scene {
 	constructor(manager) {
 		super(manager);
 		
-		this.numDoors = 1;
+		this.numDoors = 2;
+		this.messages = ["Fight", "Edit"];
+		
 		this.doors = new Collection();
-		for (var i = 0; i < this.numDoors; i++) {
-			this.doors.add(new ImageActor((i/this.numDoors) * 200, 25, FRAME.getImage("door"), PIXEL_SIZE + 2));
-		}
 		this.texts = [];
-		this.texts.push(new Text(0, -225, "Fight", "Arial", "#FFF", 52, "center"));
+		for (var i = 0; i < this.numDoors; i++) {
+			this.doors.add(new ImageActor(i * 100 - (50 * (this.numDoors - 1)), 75, FRAME.getImage("door"), PIXEL_SIZE + 2));
+			this.texts.push(new Text(0, -225, this.messages[i], "Arial", "#FFF", 52, "center"));
+		}
 		this.selectedDoorIndex = 0;
-		this.moneyText = new Text(-250, 100, "Money: " + money, "Arial", "#FFF", 30, "left");
-		this.stageText = new Text(250, 100, "Stage: " + stage, "Arial", "#FFF", 30, "right");
+		this.moneyImage = new ImageActor(-237, 156, FRAME.getImage("coin"), 25);
+		this.moneyText = new Text(-215, 125, player.money, "Arial", "#FFF", 30, "left");
+		this.stageText = new Text(250, 125, "Stage: " + player.stage, "Arial", "#FFF", 30, "right");
 	}
 	update(realTime) {
 		characters.update(realTime);
@@ -76,6 +79,9 @@ class ShopScene extends Scene {
 			if (this.selectedDoorIndex == 0) {
 				this.manager.change("fight");
 			}
+			else if (this.selectedDoorIndex == 1) {
+				editLevel("f 1000 800~p 0 0");
+			}
 		}
 	}
 	render() {
@@ -84,6 +90,7 @@ class ShopScene extends Scene {
 		if (this.selectedDoorIndex != -1) {
 			this.texts[this.selectedDoorIndex].draw();
 		}
+		this.moneyImage.draw();
 		this.moneyText.draw();
 		this.stageText.draw();
 	}
@@ -95,12 +102,12 @@ class ShopScene extends Scene {
 		FRAME.x = window.innerWidth / 2;
 		FRAME.y = window.innerHeight / 2;
 		
-		floor = new FloorRect(500, 200);
+		floor = new FloorRect(500, 250);
 		player.x = 0;
 		player.y = 0;
 		
-		this.moneyText.text = "Money: " + money;
-		this.stageText.text = "Stage: " + stage;
+		this.moneyText.text = player.money;
+		this.stageText.text = "Stage: " + player.stage;
 	}
 }
 
@@ -108,8 +115,10 @@ class FightScene extends Scene {
 	constructor(manager) {
 		super(manager);
 		
-		this.wonText = new Text(0, 0, "You Won", "Arial", "#0CF", 128, "center");
-		this.deadText = new Text(0, 0, "You Died", "Arial", "#F55", 128, "center");
+		//gui stuff
+		this.gui = new GUI(player);
+		
+		this.editorMoney = 0;
 		this.timer = 0.0;
 		this.over = false;
 	}
@@ -119,22 +128,25 @@ class FightScene extends Scene {
 		weapons.update(realTime);
 		bullets.update(realTime);
 		
+		//gui and camera
 		FRAME.x += ((-player.x * FRAME.scaleX + window.innerWidth / 2) - FRAME.x) * 0.1;
 		FRAME.y += ((-player.y * FRAME.scaleY + window.innerHeight / 2) - FRAME.y) * 0.1;
-		
-		this.wonText.x = -FRAME.x + window.innerWidth / 2;
-		this.wonText.y = -FRAME.y + window.innerHeight / 2 - 100;
-		this.deadText.x = -FRAME.x + window.innerWidth / 2;
-		this.deadText.y = -FRAME.y + window.innerHeight / 2 - 100;
+		this.gui.update(realTime);
 		
 		if (player.dead == true || characters.objects.length == 1 && player.dead == false) {
 			this.over = true;
+			this.gui.showEndScreen();
 		}
 		if (this.over) {
 			this.timer += realTime;
 			if (this.timer >= 3) {
-				if (player.dead == false) stage += 1;
-				this.manager.change("shop");
+				if (inEditor == false) {
+					if (player.dead == false) player.stage += 1;
+					this.manager.change("menu");
+				}
+				else {
+					editLevel(currentLevel);
+				}
 			}
 		}
 	}
@@ -144,18 +156,116 @@ class FightScene extends Scene {
 		weapons.draw();
 		bullets.draw();
 		characters.draw();
-		
-		if (this.over) {
-			if (player.dead) this.deadText.draw();
-			else this.wonText.draw();
-		}
+		this.gui.draw();
 	}
 	onLoad() {
-		var index = stage - 1;
-		while (stages.length - 1 < index) index -= 1;
+		if (inEditor == false) {
+			var index = player.stage - 1;
+			if (stages.length - 1 < index) {
+				var level = randomLevel();
+				console.log(level);
+				buildLevel(level);
+			}
+			else {
+				buildLevel(stages[index]);
+			}
+		}
+		else this.editorMoney = player.money;
 		
-		buildLevel(stages[index]);
+		this.gui.reset();
 		this.over = false;
 		this.timer = 0.0;
+	}
+	onUnload() {
+		if (inEditor == true) player.money = this.editorMoney;
+	}
+}
+
+class EditorScene extends Scene {
+	constructor(manager) {
+		super(manager);
+		
+		this.CAM_SPEED = 5;
+		this.selected = null;
+		this.looseSelected = null;
+		this.level = "";
+		this.prevMouseClicking = mouse.clicking;
+	}
+	update(realTime) {
+		//select a thing
+		if (mouse.clicking && this.prevMouseClicking == false) {
+			this.selected = null;
+			for (var i = 0; i < tiles.objects.length; i++) {
+				if (checkCollision(mouse, tiles.objects[i])) {
+					this.selected = tiles.objects[i];
+					this.looseSelected = tiles.objects[i];
+					break;
+				}
+			}
+			for (var i = 0; i < characters.objects.length; i++) {
+				if (checkCollision(mouse, characters.objects[i])) {
+					this.selected = characters.objects[i];
+					this.looseSelected = characters.objects[i];
+					break;
+				}
+			}
+			
+			editorSelected = this.looseSelected;
+			if (this.selected != null) {
+				document.getElementById("x").value = this.selected.x;
+				document.getElementById("y").value = this.selected.y;
+				document.getElementById("w").value = this.selected.width;
+				document.getElementById("h").value = this.selected.height;
+			}
+		}
+		//moving selected thing
+		if (mouse.clicking && this.selected !== null) {
+			if (mouse.xVel !== 0) this.selected.x += mouse.xVel;
+			if (mouse.yVel !== 0) this.selected.y += mouse.yVel;
+			document.getElementById("x").value = Math.floor(this.selected.x);
+			document.getElementById("y").value = Math.floor(this.selected.y);
+		}
+		this.prevMouseClicking = mouse.clicking;
+		
+		//changing things via keyboard
+		if (this.looseSelected != null && mouse.clicking == false) {
+			this.looseSelected.x = parseFloat(document.getElementById("x").value);
+			this.looseSelected.y = parseFloat(document.getElementById("y").value);
+			this.looseSelected.width = document.getElementById("w").value;
+			this.looseSelected.height = document.getElementById("h").value;
+		}
+		if (mouse.clicking == false) {
+			floor.width = document.getElementById("fw").value;
+			floor.height = document.getElementById("fh").value;
+		}
+		
+		//keyboard input
+		if (keyboard[37] || keyboard[65]) FRAME.x += this.CAM_SPEED;
+		if (keyboard[38] || keyboard[87]) FRAME.y += this.CAM_SPEED;
+		if (keyboard[39] || keyboard[68]) FRAME.x -= this.CAM_SPEED;
+		if (keyboard[40] || keyboard[83]) FRAME.y -= this.CAM_SPEED;
+		if (keyboard[81]) FRAME.scaleX = FRAME.scaleY = FRAME.scaleX - 0.01;
+		if (keyboard[69]) FRAME.scaleX = FRAME.scaleY = FRAME.scaleX + 0.01;
+		if (mouse.deltaY > 0) FRAME.scaleX = FRAME.scaleY = FRAME.scaleX - 0.1;
+		if (mouse.deltaY < 0) FRAME.scaleX = FRAME.scaleY = FRAME.scaleX + 0.1
+		if (keyboard[46]) editorDelete();
+		if (keyboard[13]) editorAdd();
+	}
+	render() {
+		floor.draw();
+		tiles.draw();
+		characters.draw();
+	}
+	onLoad() {
+		player.image = player.idleImage;
+		player.rotation = 0;
+		player.facingRight = true;
+		inEditor = true;
+		document.getElementById("fw").value = floor.width;
+		document.getElementById("fh").value = floor.height;
+		document.getElementById("editor-gui").style.visibility = "visible";
+	}
+	onUnload() {
+		document.getElementById("editor-gui").style.visibility = "hidden";
 	}
 }

@@ -8,12 +8,48 @@
       canvas {
         background-color: #222;
       }
+	  #editor-gui {
+		line-height: 0px;
+		padding: 10px;
+		background-color: #FFF;
+		width: 450px;
+		height: 125px;
+		color: #333;
+		position: fixed;
+		top: 0;
+		left: 50%;
+		transform: translateX(-50%);
+		visibility: hidden;
+	  }
+	  #editor-gui p {
+		margin-top: 0;
+	  }
+	  input {
+		margin: 5px 10px;
+		width: 75px;
+	  }
     </style>
   </head>
   
   <body>
     <canvas id="canvas">You need a modern browser to run this game</canvas>
     
+	<div id="editor-gui">
+		<p>x:<input id="x"/>
+		y:<input id="y"/>
+		w:<input id="w"/>
+		h:<input id="h"/></p>
+		<p>floor w:<input id="fw"/>
+		floor h:<input id="fh"/>
+		<button id="play" onclick="editorPlay()">play</button>
+		<button id="clear" onclick="console.log(editorSave())">save</button></p>
+		<p>add type: <input id="type"/>
+		<button id="add" onclick="editorAdd()">add</button>
+		<button id="del" onclick="editorDelete()">delete selected</button>
+		<button id="back" onclick="editorBack()">exit editor</button>
+		<button id="save" onclick="editorRandomize()">rand</button></p>
+	</div>
+	
     <script src="js/loader.js"></script>
   </body>
 </html>

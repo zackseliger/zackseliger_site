@@ -78,16 +78,110 @@ function buildLevel(input) {
 		else if (param[0] == "f") {
 			floor = new FloorRect(parseFloat(param[1]), parseFloat(param[2]));
 		}
-		else if (param[0] == "c") {
+		else if (param[0] == "ce") {
 			characters.add(new ChaserEnemy(parseFloat(param[1]), parseFloat(param[2])));
 		}
 		else if (param[0] == "pe") {
 			characters.add(new ProximityEnemy(parseFloat(param[1]), parseFloat(param[2])));
 		}
+		else if (param[0] == "re") {
+			characters.add(new RandomEnemy(parseFloat(param[1]), parseFloat(param[2])));
+		}
 		else if (param[0] == "t") {
 			tiles.add(new Tile(parseFloat(param[1]), parseFloat(param[2]), parseFloat(param[3]), parseFloat(param[4])));
 		}
 	}
+}
+
+function randomLevel() {
+	var level = "";
+	var lines = Math.floor(Math.random() * 15) + 20;
+	
+	level += "p 0 0~";
+	level += "f 2000 2000";
+	for (var i = 0; i < lines; i++) {
+		var rand = Math.random() * 100;
+		if (rand < 50) {
+			var randChar = Math.floor(Math.random() * 3 + 1);
+			var character = "";
+			if (randChar == 1) character = "ce";
+			else if (randChar == 2) character = "pe";
+			else if (randChar == 3) character = "re";
+			var xpos = Math.random() * 2000 - 1000;
+			var ypos = Math.random() * 2000 - 1000;
+			while (Math.sqrt(Math.pow(xpos, 2) + Math.pow(ypos, 2)) < 500) {
+				xpos = Math.random() * 2000 - 1000;
+				ypos = Math.random() * 2000 - 1000;
+			}
+			
+			level += character + " " + Math.floor(xpos) + " " + Math.floor(ypos) + "~";
+		}
+		else {
+			var xpos = Math.random() * 2000 - 1000;
+			var ypos = Math.random() * 2000 - 1000;
+			while (Math.sqrt(Math.pow(xpos, 2) + Math.pow(ypos, 2)) < 500) {
+				xpos = Math.random() * 2000 - 1000;
+				ypos = Math.random() * 2000 - 1000;
+			}
+			level += "t " + xpos + " " + ypos + " " + Math.floor(Math.random() * 500 + 25) + " " + Math.floor(Math.random() * 500 + 25) + "~";
+		}
+	}
+
+	return level;
+}
+
+////////////////////////
+/////////EDITOR/////////
+////////////////////////
+function editLevel(level) {
+	buildLevel(level);
+	currentLevel = level;
+	manager.change("editor");
+}
+function editorBack() {
+	inEditor = false;
+	manager.change("menu");
+}
+function editorDelete() {
+	if (tiles.objects.indexOf(editorSelected) != -1) {
+		tiles.remove(editorSelected);
+	}
+	if (characters.objects.indexOf(editorSelected) != -1) {
+		characters.remove(editorSelected);
+	}
+}
+function editorAdd() {
+	var type = document.getElementById("type").value;
+	document.getElementById("type").value = "";
+	if (type == "t") tiles.add(new Tile());
+	else if (type == "pe") characters.add(new ProximityEnemy());
+	else if (type == "ce") characters.add(new ChaserEnemy());
+	else if (type == "re") characters.add(new RandomEnemy());
+}
+function editorSave() {
+	var level = "";
+	level += "f " + floor.width + " " + floor.height + "~";
+	level += "p " + player.x + " " + player.y + "~";
+	for (var i = 0; i < characters.objects.length; i++) {
+		var type = characters.objects[i].type;
+		if (type != "p" && type != "c") {
+			level += type + " " + characters.objects[i].x + " " + characters.objects[i].y + "~";
+		}
+	}
+	for (var i = 0; i < tiles.objects.length; i++) {
+		level += "t " + tiles.objects[i].x + " " + tiles.objects[i].y + " " + tiles.objects[i].width + " " + tiles.objects[i].height + "~";
+	}
+	
+	currentLevel = level;
+	return level;
+}
+function editorPlay() {
+	FRAME.resize();
+	buildLevel(editorSave());
+	manager.change("fight");
+}
+function editorRandomize() {
+	editLevel(randomLevel());
 }
 
 ////////////////////////
@@ -101,7 +195,10 @@ FRAME.loadImage("assets/img/enemies/chaser/walk1.png", "chaserEnemyWalk1");
 FRAME.loadImage("assets/img/enemies/chaser/walk2.png", "chaserEnemyWalk2");
 FRAME.loadImage("assets/img/enemies/proximity/walk1.png", "proximityEnemyWalk1");
 FRAME.loadImage("assets/img/enemies/proximity/walk2.png", "proximityEnemyWalk2");
+FRAME.loadImage("assets/img/enemies/random/walk1.png", "randomEnemyWalk1");
+FRAME.loadImage("assets/img/enemies/random/walk2.png", "randomEnemyWalk2");
 
 FRAME.loadImage("assets/img/pistol.png", "pistol");
+FRAME.loadImage("assets/img/shotgun.png", "shotgun");
 FRAME.loadImage("assets/img/coin.png", "coin");
 FRAME.loadImage("assets/img/door.png", "door");

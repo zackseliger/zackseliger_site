@@ -6,10 +6,11 @@ class Character extends Actor {
 		this.height = 0;
 		this.scale = 1;
 		this.dead = false;
-		this.shootInterval = 0.25;
 		this.moveXAccum = 0;
 		this.moveYAccum = 0;
 		this.walkStrip = new ImageStrip();
+		this.type = "c";
+		this.shotTimer = new Timer(40, -40, 1);
 		
 		this.image = null;
 		this.inRightHand = null;
@@ -59,6 +60,9 @@ class Character extends Actor {
 		}
 		this.rotation += (0 - this.rotation) * 0.1;
 		
+		//shotTimer
+		this.shotTimer.update(realTime);
+		
 		//gun
 		if (this.inRightHand != null) {
 			if (this.facingRight) this.inRightHand.x = this.x + this.rightHandx;
@@ -81,10 +85,21 @@ class Character extends Actor {
 				if (this.inRightHand !== null) this.dropRightHandItem();
 			}
 		}
+		
+		//drop money
+		if (this.dead == true) {
+			var numMoney = this.money / 4;
+			if (this.money == undefined) numMoney = 25;
+			else this.money -= Math.round(this.money/4);
+			for (var i = 0; i < numMoney; i++) {
+				tiles.add(new Coin(this.x, this.y, -this.height/2 + Math.random() * 10 - 5));
+			}
+		}
 	}
 	render() {
 		if (this.facingRight == false) this.ctx.scale(-1, 1);
 		this.ctx.drawImage(this.image, -this.width / 2, -this.height / 2, this.width, this.height);
+		if (inEditor == false) this.shotTimer.draw();
 		if (this.facingRight == false) this.ctx.scale(-1, 1);
 	}
 	putInRightHand(obj) {
@@ -128,8 +143,12 @@ class Player extends Character {
 		this.walkStrip.add(FRAME.getImage("playerWalk2"));
 		
 		this.idleImage = this.walkStrip.images[0];
-		this.shootInterval = 0.25;
 		this.putInRightHand(weapon);
+		
+		//player-specific stuff
+		this.stage = 1;
+		this.money = 0;
+		this.type = "p";
 		
 		this.facingRight = true;
 		this.image = this.idleImage;
@@ -174,9 +193,9 @@ class ChaserEnemy extends Character {
 		this.inRightHand.timer = 0.5;
 		if (target === undefined) this.target = player;
 		else this.target = target;
+		this.type = "ce";
 		
 		this.movementSpeed = PLAYER_SPEED - 1.5;
-		this.shootInterval = 0.75;
 		this.facingRight = true;
 		this.image = this.idleImage;
 		this.width = this.image.width * PIXEL_SIZE;
@@ -186,12 +205,6 @@ class ChaserEnemy extends Character {
 	}
 	update(realTime) {
 		super.update(realTime);
-		
-		if (this.dead == true) {
-			for (var i = 0; i < 25; i++) {
-				tiles.add(new Coin(this.x, this.y, -this.height/2 + Math.random() * 10 - 5));
-			}
-		}
 		
 		if (Math.abs(this.y - this.target.y) + Math.abs(this.x - this.target.x) < 800) {
 			if (Math.abs(this.y - this.target.y) + Math.abs(this.x - this.target.x) > 200) {
@@ -209,7 +222,7 @@ class ChaserEnemy extends Character {
 				}
 			}
 			
-			this.pointAt(this.target.x, this.target.y - this.target.height * 0.75);
+			this.pointAt(this.target.x, this.target.y - this.target.height * 0.1);
 			this.shoot();
 		}
 	}
@@ -224,12 +237,12 @@ class ProximityEnemy extends Character {
 		this.walkStrip.add(FRAME.getImage("proximityEnemyWalk2"));
 		
 		this.idleImage = this.walkStrip.images[0];
-		this.putInRightHand(new Gun());
+		this.putInRightHand(new Shotgun());
 		if (target === undefined) this.target = player;
 		else this.target = target;
+		this.type = "pe";
 		
 		this.movementSpeed = PLAYER_SPEED - 3;
-		this.shootInterval = 0.1;
 		this.facingRight = true;
 		this.image = this.idleImage;
 		this.width = this.image.width * PIXEL_SIZE;
@@ -240,7 +253,7 @@ class ProximityEnemy extends Character {
 	update(realTime) {
 		super.update(realTime);
 		
-		if (Math.abs(this.y - this.target.y) + Math.abs(this.x - this.target.x) < 300) {
+		if (Math.abs(this.y - this.target.y) + Math.abs(this.x - this.target.x) < 500) {
 			if (this.y > this.target.y) {
 				this.moveY(-this.movementSpeed);
 			}
@@ -254,7 +267,70 @@ class ProximityEnemy extends Character {
 				this.moveX(this.movementSpeed);
 			}
 			
-			this.pointAt(this.target.x, this.target.y - this.target.height * 0.75);
+			this.pointAt(this.target.x, this.target.y - this.target.height * 0.1);
+			this.shoot();
+		}
+	}
+}
+
+class RandomEnemy extends Character {
+	constructor(x, y, target) {
+		super(x, y);
+		
+		this.walkStrip = new ImageStrip();
+		this.walkStrip.add(FRAME.getImage("randomEnemyWalk1"));
+		this.walkStrip.add(FRAME.getImage("randomEnemyWalk2"));
+		
+		this.idleImage = this.walkStrip.images[0];
+		this.putInRightHand(new Gun());
+		if (target === undefined) this.target = player;
+		else this.target = target;
+		this.type = "re";
+		
+		this.movex = 0;
+		this.movey = 0;
+		this.timer = 0;
+		this.movementSpeed = PLAYER_SPEED/2;
+		this.facingRight = true;
+		this.image = this.idleImage;
+		this.width = this.image.width * PIXEL_SIZE;
+		this.height = this.image.height * PIXEL_SIZE;
+		this.rightHandx = 3 * PIXEL_SIZE;
+		this.rightHandy = -6 * PIXEL_SIZE;
+	}
+	update(realTime) {
+		super.update(realTime);
+		
+		this.timer -= realTime;
+		if (this.timer <= 0) {
+			this.timer = 0.5;
+			var randx = Math.random();
+			var randy = Math.random();
+			
+			if (randx < 0.33) {
+				this.movex = -1;
+			}
+			else if (randx < 0.66) {
+				this.movex = 1;
+			}
+			else this.movex = 0;
+			
+			if (randy < 0.33) {
+				this.movey = -1;
+			}
+			else if (randy < 0.66) {
+				this.movey = 1;
+			}
+			else this.movey = 0;
+		}
+		
+		if (this.movex == -1) this.moveX(-this.movementSpeed);
+		if (this.movex == 1) this.moveX(this.movementSpeed);
+		if (this.movey == -1) this.moveY(-this.movementSpeed);
+		if (this.movey == 1) this.moveY(this.movementSpeed);
+		
+		if (Math.abs(this.y - this.target.y) + Math.abs(this.x - this.target.x) < window.innerWidth/4 + window.innerHeight/4) {
+			this.pointAt(this.target.x, this.target.y - this.target.height * 0.1);
 			this.shoot();
 		}
 	}
