@@ -7,9 +7,10 @@ var mouse = new Mouse();
 var timestep = new Timestep();
 
 var PIXEL_SIZE = 7;
-
+var TILE_SIZE = 75;
 var PLAYER_SPEED = 5;
 
+//collision functions (we have 3)
 function checkSpecialCollision(obj1, obj2) {
 	if (obj1.width === undefined) {
 		obj1.width = 1;
@@ -25,7 +26,6 @@ function checkSpecialCollision(obj1, obj2) {
 			obj1.y - obj1.height < obj2.y &&
 			obj1.y > obj2.y - obj2.height);
 }
-
 function checkCollision(obj1, obj2) {
 	if (obj1.width === undefined) {
 		obj1.width = 1;
@@ -41,7 +41,6 @@ function checkCollision(obj1, obj2) {
 			obj1.y - obj1.height/2 < obj2.y + obj2.height/2 &&
 			obj1.y + obj1.height/2 > obj2.y - obj2.height/2);
 }
-
 function checkCoveredBy(obj1, obj2) {//if obj1 is inside obj2
 	if (obj1.width === undefined) {
 		obj1.width = 1;
@@ -58,6 +57,7 @@ function checkCoveredBy(obj1, obj2) {//if obj1 is inside obj2
 			obj1.y + obj1.height/2 < obj2.y + obj2.height/2);
 }
 
+//level-building functions
 function buildLevel(input) {
 	bullets.clear();
 	characters.clear();
@@ -68,8 +68,7 @@ function buildLevel(input) {
 	for (var i = 0; i < lines.length; i++) {
 		param = lines[i].split(" ");
 		if (param[0] == "p") {
-			player.dead = false;
-			player.putInRightHand(weapon);
+			player.reset();
 			player.x = parseFloat(param[1]);
 			player.y = parseFloat(param[2]);
 			characters.add(player);
@@ -92,7 +91,6 @@ function buildLevel(input) {
 		}
 	}
 }
-
 function randomLevel() {
 	var level = "";
 	var lines = Math.floor(Math.random() * 15) + 20;
@@ -123,11 +121,19 @@ function randomLevel() {
 				xpos = Math.random() * 2000 - 1000;
 				ypos = Math.random() * 2000 - 1000;
 			}
-			level += "t " + xpos + " " + ypos + " " + Math.floor(Math.random() * 500 + 25) + " " + Math.floor(Math.random() * 500 + 25) + "~";
+			level += "t " + Math.floor(xpos) + " " + Math.floor(ypos) + " " + Math.floor(Math.random() * 500 + 25) + " " + Math.floor(Math.random() * 500 + 25) + "~";
 		}
 	}
 
 	return level;
+}
+
+//misc functions
+function coinExists() {
+	for (var i = 0; i < tiles.objects.length; i++) {
+		if (tiles.objects[i].type == "coin") return true;
+	}
+	return false;
 }
 
 ////////////////////////
@@ -187,7 +193,6 @@ function editorRandomize() {
 ////////////////////////
 /////////IMAGES/////////
 ////////////////////////
-
 FRAME.loadImage("assets/img/player/walk1.png", "playerWalk1");
 FRAME.loadImage("assets/img/player/walk2.png", "playerWalk2");
 
@@ -200,5 +205,21 @@ FRAME.loadImage("assets/img/enemies/random/walk2.png", "randomEnemyWalk2");
 
 FRAME.loadImage("assets/img/pistol.png", "pistol");
 FRAME.loadImage("assets/img/shotgun.png", "shotgun");
+FRAME.loadImage("assets/img/gun1.png", "gun1");
+FRAME.loadImage("assets/img/gun2.png", "gun2");
 FRAME.loadImage("assets/img/coin.png", "coin");
 FRAME.loadImage("assets/img/door.png", "door");
+
+////////////////////////
+/////////SOUNDS/////////
+////////////////////////
+FRAME.loadSound("assets/audio/boop.wav", "boop");
+FRAME.loadSound("assets/audio/ui/buy.wav", "buy");
+FRAME.loadSound("assets/audio/ui/error.wav", "error");
+FRAME.loadSound("assets/audio/ui/back.wav", "changeScene", false, 0.8);
+FRAME.loadSound("assets/audio/ui/select.wav", "select");
+FRAME.loadSound("assets/audio/ui/over.wav", "over", false, 0.5);
+FRAME.loadSound("assets/audio/guns/pistol1.wav", "pistol1", false, 0.8);
+FRAME.loadSound("assets/audio/guns/pistol2.wav", "pistol2", false, 0.8);
+FRAME.loadSound("assets/audio/guns/pistol3.wav", "pistol3", false, 0.8);
+FRAME.loadSound("assets/audio/guns/shotgun1.wav", "shotgun1", false, 0.8);

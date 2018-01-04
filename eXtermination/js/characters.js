@@ -21,6 +21,10 @@ class Character extends Actor {
 		this.scale = scale;
 		this.width = this.image.width * PIXEL_SIZE * this.scale;
 		this.height = this.image.height * PIXEL_SIZE * this.scale;
+		if (this.inRightHand != null) {
+			this.inRightHand.width = this.inRightHand.image.width * PIXEL_SIZE * this.scale;
+			this.inRightHand.height = this.inRightHand.image.height * PIXEL_SIZE * this.scale;
+		}
 	}
 	update(realTime) {
 		//movement
@@ -65,10 +69,7 @@ class Character extends Actor {
 		
 		//gun
 		if (this.inRightHand != null) {
-			if (this.facingRight) this.inRightHand.x = this.x + this.rightHandx;
-			else this.inRightHand.x = this.x + -this.rightHandx;
-			if (this.image == this.idleImage) this.inRightHand.y = this.y + this.height/2 + this.rightHandy;
-			else this.inRightHand.y = this.y + this.height/2 + (this.rightHandy + PIXEL_SIZE);
+			this.putInRightHand(this.inRightHand);
 			
 			if (Math.abs(this.inRightHand.rotation) > Math.PI / 2) {
 				this.facingRight = false;
@@ -99,22 +100,25 @@ class Character extends Actor {
 	render() {
 		if (this.facingRight == false) this.ctx.scale(-1, 1);
 		this.ctx.drawImage(this.image, -this.width / 2, -this.height / 2, this.width, this.height);
-		if (inEditor == false) this.shotTimer.draw();
+		if (manager.currentScene == "fight") this.shotTimer.draw();
 		if (this.facingRight == false) this.ctx.scale(-1, 1);
 	}
 	putInRightHand(obj) {
+		if (obj == null) obj = new EmptyGun();
 		this.inRightHand = obj;
 		this.inRightHand.owner = this;
 		
-		if (this.facingRight) this.inRightHand.x = this.x + this.rightHandx;
-		else this.inRightHand.x = this.x + -this.rightHandx;
-		if (this.image == this.idleImage) this.inRightHand.y = this.y + this.rightHandy;
-		else this.inRightHand.y = this.y + (this.rightHandy + PIXEL_SIZE);
+		if (this.facingRight) this.inRightHand.x = this.x + this.rightHandx*this.scale;
+		else this.inRightHand.x = this.x + -this.rightHandx*this.scale;
+		if (this.image == this.idleImage) this.inRightHand.y = this.y + this.height/2 + this.rightHandy*this.scale;
+		else this.inRightHand.y = this.y + this.height/2 + (this.rightHandy + PIXEL_SIZE)*this.scale;
 	}
 	dropRightHandItem() {
-		this.inRightHand.dropHeight = this.rightHandy;
-		this.inRightHand.owner = null;
-		this.inRightHand = null;
+		if (this.inRightHand != null) {
+			this.inRightHand.dropHeight = this.rightHandy;
+			this.inRightHand.owner = null;
+			this.inRightHand = null;
+		}
 	}
 	pointAt(xpos, ypos) {
 		if (this.inRightHand != null) {
@@ -132,6 +136,12 @@ class Character extends Actor {
 	moveY(amt) {
 		this.moveYAccum += amt;
 	}
+	reset() {
+		this.image = this.idleImage;
+		this.rotation = 0;
+		this.facingRight = true;
+		this.setScale(1);
+	}
 }
 
 class Player extends Character {
@@ -141,15 +151,19 @@ class Player extends Character {
 		this.walkStrip = new ImageStrip();
 		this.walkStrip.add(FRAME.getImage("playerWalk1"));
 		this.walkStrip.add(FRAME.getImage("playerWalk2"));
-		
 		this.idleImage = this.walkStrip.images[0];
-		this.putInRightHand(weapon);
 		
 		//player-specific stuff
 		this.stage = 1;
 		this.money = 0;
 		this.type = "p";
+		this.inventory = new Inventory(this, 0, 125);
+		this.rightHandSquare = new InvSquare(-100, -175, "gun");
+		this.inventory.addSlot(this.rightHandSquare);
+		this.weapon = new Gun();
+		this.inventory.addItemAtIndex(new TileItem(this.weapon.image, "gun", "pistol", 0), this.inventory.collection.objects.indexOf(this.rightHandSquare));
 		
+		this.putInRightHand(this.weapon);
 		this.facingRight = true;
 		this.image = this.idleImage;
 		this.width = this.image.width * PIXEL_SIZE;
@@ -177,6 +191,15 @@ class Player extends Character {
 		//gun stuff
 		this.pointAt(mouse.x, mouse.y);
 		if (mouse.clicking) this.shoot();
+	}
+	putInRightHand(obj) {
+		super.putInRightHand(obj);
+		this.weapon = obj;
+	}
+	reset() {
+		super.reset();
+		this.dead = false;
+		this.putInRightHand(this.weapon);
 	}
 }
 

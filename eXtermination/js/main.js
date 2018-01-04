@@ -5,6 +5,7 @@ var characters = new Collection();
 var weapons = new Collection();
 var bullets = new Collection();
 var tiles = new Collection();
+var particles = new Collection();
 //editor things
 var editorSelected = null;
 var currentLevel = "";
@@ -33,6 +34,8 @@ window.onload = function() {
 	
 	manager.addScene("menu", new MenuScene(manager));
 	manager.addScene("editor", new EditorScene(manager));
+	manager.addScene("shop", new ShopScene(manager));
+	manager.addScene("inventory", new InventoryScene(manager));
 	manager.addScene("fight", new FightScene(manager));
 	manager.change("menu");
 	

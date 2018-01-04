@@ -37,8 +37,8 @@ class MenuScene extends Scene {
 	constructor(manager) {
 		super(manager);
 		
-		this.numDoors = 2;
-		this.messages = ["Fight", "Edit"];
+		this.messages = ["Fight", "Shop", "Customize", "Edit"];
+		this.numDoors = this.messages.length;
 		
 		this.doors = new Collection();
 		this.texts = [];
@@ -46,7 +46,8 @@ class MenuScene extends Scene {
 			this.doors.add(new ImageActor(i * 100 - (50 * (this.numDoors - 1)), 75, FRAME.getImage("door"), PIXEL_SIZE + 2));
 			this.texts.push(new Text(0, -225, this.messages[i], "Arial", "#FFF", 52, "center"));
 		}
-		this.selectedDoorIndex = 0;
+		this.selectedDoorIndex = -1;
+		this.prevDoorIndex = -1;
 		this.moneyImage = new ImageActor(-237, 156, FRAME.getImage("coin"), 25);
 		this.moneyText = new Text(-215, 125, player.money, "Arial", "#FFF", 30, "left");
 		this.stageText = new Text(250, 125, "Stage: " + player.stage, "Arial", "#FFF", 30, "right");
@@ -73,15 +74,26 @@ class MenuScene extends Scene {
 				this.doors.objects[i].height += (this.doors.objects[i].image.height * (PIXEL_SIZE + 2) - this.doors.objects[i].height) * 0.1;
 			}
 		}
+		if (this.prevDoorIndex != this.selectedDoorIndex) {
+			FRAME.playSound("over");
+		}
+		this.prevDoorIndex = this.selectedDoorIndex;
 		
 		//mouse click
 		if (mouse.clicking && this.selectedDoorIndex != -1) {
-			if (this.selectedDoorIndex == 0) {
+			if (this.texts[this.selectedDoorIndex].text == "Fight") {
 				this.manager.change("fight");
 			}
-			else if (this.selectedDoorIndex == 1) {
+			else if (this.texts[this.selectedDoorIndex].text == "Edit") {
 				editLevel("f 1000 800~p 0 0");
 			}
+			else if (this.texts[this.selectedDoorIndex].text == "Shop") {
+				this.manager.change("shop");
+			}
+			else if (this.texts[this.selectedDoorIndex].text == "Customize") {
+				this.manager.change("inventory");
+			}
+			FRAME.playSound("changeScene");
 		}
 	}
 	render() {
@@ -106,8 +118,16 @@ class MenuScene extends Scene {
 		player.x = 0;
 		player.y = 0;
 		
+		this.prevDoorIndex = -1;
 		this.moneyText.text = player.money;
 		this.stageText.text = "Stage: " + player.stage;
+		
+		//reset doors
+		this.selectedDoorIndex = -1;
+		for (var i = 0; i < this.doors.objects.length; i++) {
+			this.doors.objects[i].width = this.doors.objects[i].image.width * (PIXEL_SIZE+2);
+			this.doors.objects[i].height = this.doors.objects[i].image.height * (PIXEL_SIZE+2);
+		}
 	}
 }
 
@@ -115,11 +135,8 @@ class FightScene extends Scene {
 	constructor(manager) {
 		super(manager);
 		
-		//gui stuff
 		this.gui = new GUI(player);
-		
 		this.editorMoney = 0;
-		this.timer = 0.0;
 		this.over = false;
 	}
 	update(realTime) {
@@ -127,19 +144,20 @@ class FightScene extends Scene {
 		characters.update(realTime);
 		weapons.update(realTime);
 		bullets.update(realTime);
+		particles.update(realTime);
 		
 		//gui and camera
 		FRAME.x += ((-player.x * FRAME.scaleX + window.innerWidth / 2) - FRAME.x) * 0.1;
 		FRAME.y += ((-player.y * FRAME.scaleY + window.innerHeight / 2) - FRAME.y) * 0.1;
 		this.gui.update(realTime);
 		
+		//if player is dead or beat the level
 		if (player.dead == true || characters.objects.length == 1 && player.dead == false) {
 			this.over = true;
 			this.gui.showEndScreen();
 		}
 		if (this.over) {
-			this.timer += realTime;
-			if (this.timer >= 3) {
+			if (this.gui.doneShowingEndScreen) {
 				if (inEditor == false) {
 					if (player.dead == false) player.stage += 1;
 					this.manager.change("menu");
@@ -153,6 +171,7 @@ class FightScene extends Scene {
 	render() {
 		floor.draw();
 		tiles.draw();
+		particles.draw();
 		weapons.draw();
 		bullets.draw();
 		characters.draw();
@@ -172,9 +191,11 @@ class FightScene extends Scene {
 		}
 		else this.editorMoney = player.money;
 		
+		particles.clear();
+		FRAME.x = -player.x * FRAME.scaleX + window.innerWidth / 2;
+		FRAME.y = -player.y * FRAME.scaleY + window.innerHeight / 2;
 		this.gui.reset();
 		this.over = false;
-		this.timer = 0.0;
 	}
 	onUnload() {
 		if (inEditor == true) player.money = this.editorMoney;
@@ -257,9 +278,7 @@ class EditorScene extends Scene {
 		characters.draw();
 	}
 	onLoad() {
-		player.image = player.idleImage;
-		player.rotation = 0;
-		player.facingRight = true;
+		player.reset();
 		inEditor = true;
 		document.getElementById("fw").value = floor.width;
 		document.getElementById("fh").value = floor.height;
@@ -267,5 +286,170 @@ class EditorScene extends Scene {
 	}
 	onUnload() {
 		document.getElementById("editor-gui").style.visibility = "hidden";
+		FRAME.resize();
+	}
+}
+
+class ShopScene extends Scene {
+	constructor(manager) {
+		super(manager);
+		
+		this.shopText = new Text(0, -400, "Shop", "Arial", "#FFF", 100, "center");
+		this.priceText = new Text(0, 300, "", "Arial", "#FFF", 64, "center");
+		
+		this.shopInv = new Inventory(null, 0, -50);
+		this.shopInv.addItem(new TileItem(FRAME.getImage("shotgun"), "gun", "shotgun", 125));
+		this.shopInv.addItem(new TileItem(FRAME.getImage("gun1"), "gun", "gun1", 0));
+		this.shopInv.addItem(new TileItem(FRAME.getImage("gun2"), "gun", "gun2", 0));
+		
+		this.exitButton = new ExitButton();
+		this.gui = new GUI(player);
+		this.gui.moveMoneyRight();
+		this.prevMouseClicking = true;
+	}
+	update(realTime) {
+		FRAME.x = window.innerWidth / 2;
+		FRAME.y = window.innerHeight / 2;
+		this.gui.update(realTime);
+		this.exitButton.update(realTime);
+		particles.update(realTime);
+		
+		//shop inventory update
+		this.shopInv.update(realTime);
+		this.shopInv.selectedObject = null;//special inventory hacks
+		this.shopInv.selectedObjectIndex = -1;
+		if (FRAME.sounds.get("select").playing)
+			FRAME.stopSound("select");
+		if (this.shopInv.mouseOverObject != null) {//mousing over an item
+			this.priceText.text = "Price: " + this.shopInv.mouseOverObject.price;
+			if (this.gui.showingItemCard == false)
+				this.gui.showItemCard(new ItemCard(this.shopInv.mouseOverObject));
+			if (mouse.clicking && this.prevMouseClicking == false) {//if they click
+				if (player.money >= this.shopInv.mouseOverObject.price) {
+					player.money -= this.shopInv.mouseOverObject.price;
+					particles.add(new BuyItemParticle(this.shopInv.mouseOverObject.x, this.shopInv.mouseOverObject.y));
+					player.inventory.addItem(this.shopInv.mouseOverObject);
+					this.shopInv.removeItem(this.shopInv.mouseOverObject);
+					FRAME.playSound("buy");
+				}
+				else {
+					particles.add(new ErrorParticle(this.shopInv.mouseOverObject.x, this.shopInv.mouseOverObject.y));
+					FRAME.playSound("error");
+				}
+			}
+		}
+		else {
+			this.priceText.text = "";
+			this.gui.hideItemCard();
+		}
+		//exit button
+		if (mouse.clicking && this.prevMouseClicking == false) {
+			if (this.exitButton.mouseOver) {
+				this.manager.change("menu");
+				FRAME.playSound("changeScene");
+			}
+		}
+		this.prevMouseClicking = mouse.clicking;
+	}
+	render() {
+		this.shopInv.draw();
+		this.shopText.draw();
+		this.priceText.draw();
+		this.exitButton.draw();
+		particles.draw();
+		this.gui.moneyText.draw();
+		this.gui.moneyImage.draw();
+		if (this.gui.showingItemCard) {
+			this.gui.itemCard.draw();
+		}
+	}
+	onLoad() {
+		particles.clear();
+		this.prevMouseClicking = true;
+		this.gui.reset();
+		this.gui.update(0);
+		this.exitButton = new ExitButton();
+		this.exitButton.update(0);
+	}
+}
+
+class InventoryScene extends Scene {
+	constructor(manager) {
+		super(manager);
+		
+		this.weaponText = new Text(-150, -220, "Weapon:", "Arial", "#FFF", 64, "right");
+		this.prevMouseClicking = true;
+		this.exitButton = new ExitButton();
+		this.INV_SCALE = 3;
+	}
+	update(realTime) {
+		FRAME.x = window.innerWidth / 2;
+		FRAME.y = window.innerHeight / 2;
+		this.exitButton.update(realTime);
+		
+		//update player inv and handle swapping items
+		player.inventory.update(realTime);
+		var rightHandIndex = player.inventory.collection.objects.indexOf(player.rightHandSquare);
+		if (player.inventory.objects[rightHandIndex] == null) {
+			weapons.remove(player.weapon);
+			player.weapon = null;
+			player.dropRightHandItem();
+		}
+		else if (player.weapon == null || player.inventory.objects[rightHandIndex].image != player.weapon.image) {
+			weapons.remove(player.weapon);
+			player.dropRightHandItem();
+			var newImage = player.inventory.objects[rightHandIndex].image;
+			if (newImage == FRAME.getImage("shotgun")) {
+				player.putInRightHand(new Shotgun());
+			}
+			else if (newImage == FRAME.getImage("pistol")) {
+				player.putInRightHand(new Gun());
+			}
+			else {
+				player.putInRightHand(new Gun(0,0,newImage));
+			}
+			player.setScale(this.INV_SCALE);
+		}
+		
+		//exit button
+		if (mouse.clicking && this.prevMouseClicking == false) {
+			if (this.exitButton.mouseOver) {
+				this.manager.change("menu");
+				FRAME.playSound("changeScene");
+			}
+		}
+		
+		this.prevMouseClicking = mouse.clicking;
+	}
+	render() {
+		floor.draw();
+		player.draw();
+		weapons.draw();
+		this.weaponText.draw();
+		
+		player.inventory.draw();
+		this.exitButton.draw();
+	}
+	onLoad () {
+		floor = new FloorRect(400, 350);
+		floor.y = -175;
+		floor.x = 262.5;
+		player.x = floor.x;
+		player.y = floor.y;
+		player.image = player.idleImage;
+		player.rotation = 0;
+		player.facingRight = true;
+		player.putInRightHand(player.weapon);
+		weapons.add(player.weapon);
+		if (player.weapon != null) player.weapon.rotation = 0;
+		player.setScale(this.INV_SCALE);
+		player.putInRightHand(player.weapon);
+		
+		this.prevMouseClicking = true;
+		this.exitButton = new ExitButton();
+		this.exitButton.update(0);
+	}
+	onUnload() {
+		player.reset();
 	}
 }
