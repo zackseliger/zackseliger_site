@@ -57,6 +57,11 @@ function checkCoveredBy(obj1, obj2) {//if obj1 is inside obj2
 			obj1.y + obj1.height/2 < obj2.y + obj2.height/2);
 }
 
+//distance
+function distBetween(obj1, obj2) {
+	return Math.abs(obj1.x - obj2.x) + Math.abs(obj1.y - obj2.y);
+}
+
 //level-building functions
 function buildLevel(input) {
 	bullets.clear();
@@ -203,23 +208,43 @@ FRAME.loadImage("assets/img/enemies/proximity/walk2.png", "proximityEnemyWalk2")
 FRAME.loadImage("assets/img/enemies/random/walk1.png", "randomEnemyWalk1");
 FRAME.loadImage("assets/img/enemies/random/walk2.png", "randomEnemyWalk2");
 
-FRAME.loadImage("assets/img/pistol.png", "pistol");
-FRAME.loadImage("assets/img/shotgun.png", "shotgun");
-FRAME.loadImage("assets/img/gun1.png", "gun1");
-FRAME.loadImage("assets/img/gun2.png", "gun2");
+FRAME.loadImage("assets/img/weapons/pistol.png", "pistol");
+FRAME.loadImage("assets/img/weapons/shotgun.png", "shotgun");
+FRAME.loadImage("assets/img/weapons/machinegun.png", "machinegun");
+FRAME.loadImage("assets/img/weapons/launcher.png", "launcher");
+FRAME.loadImage("assets/img/weapons/mine.png", "mine");
+
+FRAME.loadImage("assets/img/helmets/forest.png", "forestHelmet");
+FRAME.loadImage("assets/img/helmets/headband.png", "headband");
+FRAME.loadImage("assets/img/helmets/chainmail.png", "chainmailHelmet");
+
+FRAME.loadImage("assets/img/torso/forest.png", "forestTorso");
+FRAME.loadImage("assets/img/torso/sash.png", "sash");
+FRAME.loadImage("assets/img/torso/chainmail.png", "chainmailTorso");
+
+FRAME.loadImage("assets/img/smoke1.png", "smoke1");
+FRAME.loadImage("assets/img/smoke2.png", "smoke2");
 FRAME.loadImage("assets/img/coin.png", "coin");
 FRAME.loadImage("assets/img/door.png", "door");
 
 ////////////////////////
 /////////SOUNDS/////////
 ////////////////////////
-FRAME.loadSound("assets/audio/boop.wav", "boop");
+FRAME.loadSound("assets/audio/misc/boop.wav", "boop");
+FRAME.loadSound("assets/audio/misc/hurt1.wav", "hurt1", false, 0.9);
+FRAME.loadSound("assets/audio/misc/hurt2.wav", "hurt2", false, 0.9);
+FRAME.loadSound("assets/audio/misc/hurt3.wav", "hurt3", false, 0.9);
 FRAME.loadSound("assets/audio/ui/buy.wav", "buy");
 FRAME.loadSound("assets/audio/ui/error.wav", "error");
 FRAME.loadSound("assets/audio/ui/back.wav", "changeScene", false, 0.8);
 FRAME.loadSound("assets/audio/ui/select.wav", "select");
-FRAME.loadSound("assets/audio/ui/over.wav", "over", false, 0.5);
-FRAME.loadSound("assets/audio/guns/pistol1.wav", "pistol1", false, 0.8);
-FRAME.loadSound("assets/audio/guns/pistol2.wav", "pistol2", false, 0.8);
-FRAME.loadSound("assets/audio/guns/pistol3.wav", "pistol3", false, 0.8);
-FRAME.loadSound("assets/audio/guns/shotgun1.wav", "shotgun1", false, 0.8);
+FRAME.loadSound("assets/audio/ui/over.wav", "over", false, 0.7);
+FRAME.loadSound("assets/audio/weapons/pistol1.wav", "pistol1");
+FRAME.loadSound("assets/audio/weapons/pistol2.wav", "pistol2");
+FRAME.loadSound("assets/audio/weapons/pistol3.wav", "pistol3");
+FRAME.loadSound("assets/audio/weapons/shotgun1.wav", "shotgun1");
+FRAME.loadSound("assets/audio/weapons/machinegun1.wav", "machinegun1");
+FRAME.loadSound("assets/audio/weapons/machinegun2.wav", "machinegun2");
+FRAME.loadSound("assets/audio/weapons/grenade.wav", "grenade");
+FRAME.loadSound("assets/audio/weapons/minedrop.wav", "mineDrop");
+FRAME.loadSound("assets/audio/weapons/swap.wav", "swap");

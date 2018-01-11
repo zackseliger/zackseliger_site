@@ -135,6 +135,10 @@ class FightScene extends Scene {
 	constructor(manager) {
 		super(manager);
 		
+		this.pickUpText = new Text(0,0,"space to swap", "Arial", "#FFF", 24, "center");
+		this.pickUpTimer = 0.0;
+		this.pickUpShow = false;
+		
 		this.gui = new GUI(player);
 		this.editorMoney = 0;
 		this.over = false;
@@ -150,6 +154,22 @@ class FightScene extends Scene {
 		FRAME.x += ((-player.x * FRAME.scaleX + window.innerWidth / 2) - FRAME.x) * 0.1;
 		FRAME.y += ((-player.y * FRAME.scaleY + window.innerHeight / 2) - FRAME.y) * 0.1;
 		this.gui.update(realTime);
+		
+		this.pickUpShow = false;
+		for (var i = 0; i < weapons.objects.length; i++) {
+			if (weapons.objects[i].owner == null && distBetween(player, weapons.objects[i]) < player.width*1.5 + weapons.objects[i].width) {
+				this.pickUpText.x = weapons.objects[i].x;
+				this.pickUpText.y = weapons.objects[i].y - 25;
+				if (player.dead == false && weapons.objects[i].dropHeight == 0) this.pickUpShow = true;
+				break;
+			}
+		}
+		if (this.pickUpShow) {
+			this.pickUpTimer += realTime;
+			if (this.pickUpTimer >= 2.0) this.pickUpShow = true;
+			else this.pickUpShow = false;
+		}
+		else this.pickUpTimer = 0.0;
 		
 		//if player is dead or beat the level
 		if (player.dead == true || characters.objects.length == 1 && player.dead == false) {
@@ -176,6 +196,7 @@ class FightScene extends Scene {
 		bullets.draw();
 		characters.draw();
 		this.gui.draw();
+		if (this.pickUpShow) this.pickUpText.draw();
 	}
 	onLoad() {
 		if (inEditor == false) {
@@ -213,6 +234,13 @@ class EditorScene extends Scene {
 		this.prevMouseClicking = mouse.clicking;
 	}
 	update(realTime) {
+		//guns in hands
+		for (var i = 0; i < characters.objects.length; i++) {
+			if (characters.objects[i].inRightHand != null) {
+				characters.objects[i].putInRightHand(characters.objects[i].inRightHand);
+			}
+		}
+		
 		//select a thing
 		if (mouse.clicking && this.prevMouseClicking == false) {
 			this.selected = null;
@@ -276,6 +304,7 @@ class EditorScene extends Scene {
 		floor.draw();
 		tiles.draw();
 		characters.draw();
+		weapons.draw();
 	}
 	onLoad() {
 		player.reset();
@@ -295,12 +324,18 @@ class ShopScene extends Scene {
 		super(manager);
 		
 		this.shopText = new Text(0, -400, "Shop", "Arial", "#FFF", 100, "center");
-		this.priceText = new Text(0, 300, "", "Arial", "#FFF", 64, "center");
 		
 		this.shopInv = new Inventory(null, 0, -50);
-		this.shopInv.addItem(new TileItem(FRAME.getImage("shotgun"), "gun", "shotgun", 125));
-		this.shopInv.addItem(new TileItem(FRAME.getImage("gun1"), "gun", "gun1", 0));
-		this.shopInv.addItem(new TileItem(FRAME.getImage("gun2"), "gun", "gun2", 0));
+		this.shopInv.addItem(new TileItem(FRAME.getImage("shotgun"), "weapon", "shotgun", 125));
+		this.shopInv.addItem(new TileItem(FRAME.getImage("machinegun"), "weapon", "machine gun", 250));
+		this.shopInv.addItem(new TileItem(FRAME.getImage("launcher"), "weapon", "grenade launcher", 400));
+		this.shopInv.addItem(new TileItem(FRAME.getImage("mine"), "weapon", "mines", 25));
+		this.shopInv.addItem(new TileItem(FRAME.getImage("forestHelmet"), "helmet", "forest mask", 25));
+		this.shopInv.addItem(new TileItem(FRAME.getImage("forestTorso"), "torso", "forest body", 25));
+		this.shopInv.addItem(new TileItem(FRAME.getImage("headband"), "helmet", "headband", 50));
+		this.shopInv.addItem(new TileItem(FRAME.getImage("sash"), "torso", "sash", 50));
+		this.shopInv.addItem(new TileItem(FRAME.getImage("chainmailHelmet"), "helmet", "chainmail mask", 50));
+		this.shopInv.addItem(new TileItem(FRAME.getImage("chainmailTorso"), "torso", "chainmail body", 50));
 		
 		this.exitButton = new ExitButton();
 		this.gui = new GUI(player);
@@ -321,7 +356,6 @@ class ShopScene extends Scene {
 		if (FRAME.sounds.get("select").playing)
 			FRAME.stopSound("select");
 		if (this.shopInv.mouseOverObject != null) {//mousing over an item
-			this.priceText.text = "Price: " + this.shopInv.mouseOverObject.price;
 			if (this.gui.showingItemCard == false)
 				this.gui.showItemCard(new ItemCard(this.shopInv.mouseOverObject));
 			if (mouse.clicking && this.prevMouseClicking == false) {//if they click
@@ -339,7 +373,6 @@ class ShopScene extends Scene {
 			}
 		}
 		else {
-			this.priceText.text = "";
 			this.gui.hideItemCard();
 		}
 		//exit button
@@ -354,7 +387,6 @@ class ShopScene extends Scene {
 	render() {
 		this.shopInv.draw();
 		this.shopText.draw();
-		this.priceText.draw();
 		this.exitButton.draw();
 		particles.draw();
 		this.gui.moneyText.draw();
@@ -377,7 +409,9 @@ class InventoryScene extends Scene {
 	constructor(manager) {
 		super(manager);
 		
+		this.helmetText = new Text(-150, -345, "Helmet:", "Arial", "#FFF", 64, "right");
 		this.weaponText = new Text(-150, -220, "Weapon:", "Arial", "#FFF", 64, "right");
+		this.torsoText = new Text(-150, -95, "Torso:", "Arial", "#FFF", 64, "right");
 		this.prevMouseClicking = true;
 		this.exitButton = new ExitButton();
 		this.INV_SCALE = 3;
@@ -387,9 +421,11 @@ class InventoryScene extends Scene {
 		FRAME.y = window.innerHeight / 2;
 		this.exitButton.update(realTime);
 		
-		//update player inv and handle swapping items
 		player.inventory.update(realTime);
+		//update player inv and handle swapping items
 		var rightHandIndex = player.inventory.collection.objects.indexOf(player.rightHandSquare);
+		var helmetIndex = player.inventory.collection.objects.indexOf(player.helmetSquare);
+		var torsoIndex = player.inventory.collection.objects.indexOf(player.torsoSquare);
 		if (player.inventory.objects[rightHandIndex] == null) {
 			weapons.remove(player.weapon);
 			player.weapon = null;
@@ -397,18 +433,47 @@ class InventoryScene extends Scene {
 		}
 		else if (player.weapon == null || player.inventory.objects[rightHandIndex].image != player.weapon.image) {
 			weapons.remove(player.weapon);
-			player.dropRightHandItem();
+			//player.dropRightHandItem();
 			var newImage = player.inventory.objects[rightHandIndex].image;
 			if (newImage == FRAME.getImage("shotgun")) {
-				player.putInRightHand(new Shotgun());
+				player.changeWeapon(new Shotgun());
 			}
 			else if (newImage == FRAME.getImage("pistol")) {
-				player.putInRightHand(new Gun());
+				player.changeWeapon(new Gun());
+			}
+			else if (newImage == FRAME.getImage("machinegun")) {
+				player.changeWeapon(new Machinegun());
+			}
+			else if (newImage == FRAME.getImage("launcher")) {
+				player.changeWeapon(new GrenadeLauncher());
+			}
+			else if (newImage == FRAME.getImage("mine")) {
+				player.changeWeapon(new Mine());
 			}
 			else {
-				player.putInRightHand(new Gun(0,0,newImage));
+				player.changeWeapon(new Gun(0,0,newImage));
 			}
 			player.setScale(this.INV_SCALE);
+		}
+		if (player.inventory.objects[helmetIndex] == null && player.helmet != null) {
+			player.takeOffHelmet();
+		}
+		else if (player.inventory.objects[helmetIndex] != null && player.helmet == null) {
+			player.putOnHead(new Helmet(0,0,player.inventory.objects[helmetIndex].image));
+		}
+		else if (player.inventory.objects[helmetIndex] != null && player.helmet != null && player.helmet.image != player.inventory.objects[helmetIndex].image) {
+			player.takeOffHelmet();
+			player.putOnHead(new Helmet(0,0,player.inventory.objects[helmetIndex].image));
+		}
+		if (player.inventory.objects[torsoIndex] == null && player.torso != null) {
+			player.takeOffTorso();
+		}
+		else if (player.inventory.objects[torsoIndex] != null && player.torso == null) {
+			player.putOnTorso(new Torso(0,0,player.inventory.objects[torsoIndex].image));
+		}
+		else if (player.inventory.objects[torsoIndex] != null && player.torso != null && player.torso.image != player.inventory.objects[torsoIndex].image) {
+			player.takeOffTorso();
+			player.putOnTorso(new Torso(0,0,player.inventory.objects[torsoIndex].image));
 		}
 		
 		//exit button
@@ -425,7 +490,9 @@ class InventoryScene extends Scene {
 		floor.draw();
 		player.draw();
 		weapons.draw();
+		this.helmetText.draw();
 		this.weaponText.draw();
+		this.torsoText.draw();
 		
 		player.inventory.draw();
 		this.exitButton.draw();
@@ -439,11 +506,15 @@ class InventoryScene extends Scene {
 		player.image = player.idleImage;
 		player.rotation = 0;
 		player.facingRight = true;
-		player.putInRightHand(player.weapon);
-		weapons.add(player.weapon);
-		if (player.weapon != null) player.weapon.rotation = 0;
+		if (player.weapon != null) {
+			player.putInRightHand(player.weapon);
+			weapons.add(player.weapon);
+			player.weapon.rotation = 0;
+		}
 		player.setScale(this.INV_SCALE);
 		player.putInRightHand(player.weapon);
+		if (player.helmet != null) player.putOnHead(player.helmet);
+		if (player.torso != null) player.putOnTorso(player.torso);
 		
 		this.prevMouseClicking = true;
 		this.exitButton = new ExitButton();

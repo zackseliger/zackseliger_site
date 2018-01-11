@@ -37,7 +37,6 @@ class BulletTrailParticle extends Actor {
 	}
 }
 
-
 class Bullet extends Actor {
 	constructor(x, y, rot, spd, owner) {
 		super(x, y);
@@ -76,6 +75,52 @@ class Bullet extends Actor {
 		this.ctx.fillStyle = "#000";
 		this.ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
 	}
+	hitEnemy() {}
+}
+
+class Grenade extends Bullet {
+	constructor(x, y, rot, owner) {
+		super(x, y, rot, 10, owner);
+		this.width *= 2;
+		this.height *= 2;
+		this.dist = distBetween(this, mouse);
+		this.numBullets = 20;
+	}
+	update(realTime) {
+		super.update(realTime);
+		this.timer += realTime*2;//I purposly add realTime to this.timer twice
+		this.speed *= 0.97;
+		if (this.dead) {
+			for (var i = 0; i < this.numBullets; i++) {
+				bullets.add(new Bullet(this.x, this.y, 2*Math.PI * (i/this.numBullets), 10, this.owner));
+			}
+			var soundName = "grenade";
+			var id = FRAME.playSound(soundName);
+			var vol = 90/distBetween(this, player);
+		}
+	}
+}
+
+class MineBullet extends Bullet {
+	constructor(x, y, rot, owner) {
+		super(x, y, rot, 0, owner);
+		this.image = FRAME.getImage("mine");
+		this.width = this.image.width * PIXEL_SIZE;
+		this.height = this.image.height * PIXEL_SIZE;
+	}
+	update(realTime) {
+		super.update(realTime);
+		this.timer -= realTime;
+	}
+	hitEnemy() {
+		this.dead = true;
+		for (var i = 0; i < 5; i++) {
+			particles.add(new SmokeParticle(this.x, this.y, PIXEL_SIZE));
+		}
+	}
+	render() {
+		this.ctx.drawImage(this.image, -this.width/2, -this.height/2, this.width, this.height);
+	}
 }
 
 class Gun extends Actor {
@@ -85,11 +130,14 @@ class Gun extends Actor {
 		this.image = img;
 		this.width = this.image.width * PIXEL_SIZE;
 		this.height = this.image.height * PIXEL_SIZE;
+		this.normalWidth = this.width;
+		this.normalHeight = this.height;
 		
 		this.dropHeight = 0;
-		this.yVel = -12;
+		this.yVel = 0;
 		this.xVel = Math.random() * 4 - 2;
 		
+		this.highlighted = false;
 		this.owner = null;
 		this.shotTimer = 0.5;
 		this.shooting = false;
@@ -102,18 +150,33 @@ class Gun extends Actor {
 		if (this.shooting) {
 			this.timer = 0;
 			this.fireRound();
+			particles.add(new SmokeParticle(this.x, this.y, PIXEL_SIZE));
 			this.owner.shotTimer.setTimer(this.shotTimer);
 		}
 		if (this.shooting) this.shooting = false;
 		
 		if (this.owner === null) {
 			this.rotation += 0.05;
-			if (this.dropHeight <= 0) {
+			if (this.dropHeight < 0) {
 				this.y += this.yVel;
 				this.x += this.xVel;
 				this.dropHeight += this.yVel;
+				if (this.dropHeight > 0) this.dropHeight = 0;
 				this.yVel += (9.8 - this.yVel) * 0.1;
 			}
+			if (this.highlighted) {
+				this.rotation -= 0.04;
+				this.width += (this.normalWidth * 1.5 - this.width) * 0.1;
+				this.height += (this.normalHeight * 1.5 - this.height) * 0.1;
+				this.highlighted = false;
+			}
+			else {
+				this.width += (this.normalWidth - this.width) * 0.1;
+				this.height += (this.normalHeight - this.height) * 0.1;
+			}
+		}
+		else {
+			this.yVel = -12;
 		}
 	}
 	render() {
@@ -131,15 +194,17 @@ class Gun extends Actor {
 	fireRound() {
 		var soundName = "pistol" + (Math.floor(Math.random() * 3) + 1);
 		var id = FRAME.playSound(soundName);
-		var vol = 100/Math.abs(player.x - this.x);
-		console.log(vol);
+		var vol = 90/distBetween(this, player);
 		FRAME.sounds.get(soundName).volume(vol, id);
 		if (Math.abs(this.rotation) < Math.PI / 2) {
-			new Bullet(this.x + 1.5*PIXEL_SIZE*Math.sin(this.rotation), this.y - 1.5*PIXEL_SIZE*Math.cos(this.rotation), this.rotation, 15, this.owner);
+			new Bullet(this.x + 1.5*PIXEL_SIZE*Math.sin(this.rotation), this.y - 1.5*PIXEL_SIZE*Math.cos(this.rotation), this.rotation + Math.random() * 0.1 - 0.05, 15, this.owner);
 		}
 		else {
-			new Bullet(this.x - 1.5*PIXEL_SIZE*Math.sin(this.rotation), this.y + 1.5*PIXEL_SIZE*Math.cos(this.rotation), this.rotation, 15, this.owner);
+			new Bullet(this.x - 1.5*PIXEL_SIZE*Math.sin(this.rotation), this.y + 1.5*PIXEL_SIZE*Math.cos(this.rotation), this.rotation + Math.random() * 0.1 - 0.05, 15, this.owner);
 		}
+	}
+	highlight() {
+		this.highlighted = true;
 	}
 }
 
@@ -148,25 +213,23 @@ class EmptyGun extends Gun {
 		super(0,0);
 		this.shotTimer = 0;
 	}
-	fireRound() {
-		
+	update(realTime) {
+		if (this.owner == null) this.dead = true;
 	}
-	render() {
-		
-	}
+	fireRound() {}
+	render() {}
 }
 
 class Shotgun extends Gun {
 	constructor (x, y) {
 		super(x, y, FRAME.getImage("shotgun"));
 		
-		this.shotTimer = 1.5;
+		this.shotTimer = 1;
 	}
 	fireRound() {
 		var soundName = "shotgun1";
 		var id = FRAME.playSound(soundName);
-		var vol = 100/Math.abs(player.x - this.x);
-		console.log(vol);
+		var vol = 90/distBetween(this, player);
 		FRAME.sounds.get(soundName).volume(vol, id);
 		var numBullets = 3;
 		for (var i = 0; i < numBullets; i++) {
@@ -177,6 +240,84 @@ class Shotgun extends Gun {
 				new Bullet(this.x - 1.5*PIXEL_SIZE*Math.sin(this.rotation), this.y + 1.5*PIXEL_SIZE*Math.cos(this.rotation), this.rotation + Math.random() * 0.5 - 0.25, 13 + Math.random() * 3 - 1, this.owner);
 			}
 		}
+	}
+}
+
+class Machinegun extends Gun {
+	constructor(x, y) {
+		super(x, y, FRAME.getImage("machinegun"));
+		
+		this.shotTimer = 0.1;
+	}
+	fireRound() {
+		var soundName = "machinegun" + (Math.floor(Math.random() * 2) + 1);
+		var id = FRAME.playSound(soundName);
+		var vol = 90/distBetween(this, player);
+		FRAME.sounds.get(soundName).volume(vol, id);
+		if (Math.abs(this.rotation) < Math.PI / 2) {
+			new Bullet(this.x + 1.5*PIXEL_SIZE*Math.sin(this.rotation), this.y - 1.5*PIXEL_SIZE*Math.cos(this.rotation), this.rotation + Math.random() * 0.4 - 0.2, 15, this.owner);
+		}
+		else {
+			new Bullet(this.x - 1.5*PIXEL_SIZE*Math.sin(this.rotation), this.y + 1.5*PIXEL_SIZE*Math.cos(this.rotation), this.rotation + Math.random() * 0.4 - 0.2, 15, this.owner);
+		}
+	}
+}
+
+class GrenadeLauncher extends Gun {
+	constructor(x, y) {
+		super(x, y, FRAME.getImage("launcher"));
+		
+		this.shotTimer = 1.5;
+	}
+	fireRound() {
+		var soundName = "machinegun" + (Math.floor(Math.random() * 2) + 1);
+		var id = FRAME.playSound(soundName);
+		var vol = 90/distBetween(this, player);
+		FRAME.sounds.get(soundName).volume(vol, id);
+		if (Math.abs(this.rotation) < Math.PI / 2) {
+			new Grenade(this.x + 1.5*PIXEL_SIZE*Math.sin(this.rotation), this.y - 1.5*PIXEL_SIZE*Math.cos(this.rotation), this.rotation, this.owner);
+		}
+		else {
+			new Grenade(this.x - 1.5*PIXEL_SIZE*Math.sin(this.rotation), this.y + 1.5*PIXEL_SIZE*Math.cos(this.rotation), this.rotation, this.owner);
+		}
+	}
+}
+
+class Mine extends Gun {
+	constructor(x, y) {
+		super(x, y, FRAME.getImage("mine"));
+		
+		this.shotTimer = 0.75;
+	}
+	fireRound() {
+		var id = FRAME.playSound("mineDrop");
+		var vol = 90/distBetween(this, player);
+		if (Math.abs(this.rotation) < Math.PI / 2) {
+			new MineBullet(this.x + 1.5*PIXEL_SIZE*Math.sin(this.rotation), this.y - 1.5*PIXEL_SIZE*Math.cos(this.rotation), Math.PI % this.rotation, this.owner);
+		}
+		else {
+			new MineBullet(this.x - 1.5*PIXEL_SIZE*Math.sin(this.rotation), this.y + 1.5*PIXEL_SIZE*Math.cos(this.rotation), Math.PI % this.rotation, this.owner);
+		}
+	}
+}
+
+class Helmet extends ImageActor {
+	constructor(x, y, img) {
+		super(x, y, img);
+	}
+	setScale(scale) {
+		this.width = this.image.width * PIXEL_SIZE * scale;
+		this.height = this.image.height * PIXEL_SIZE * scale;
+	}
+}
+
+class Torso extends ImageActor {
+	constructor(x, y, img) {
+		super(x, y, img);
+	}
+	setScale(scale) {
+		this.width = this.image.width * PIXEL_SIZE * scale;
+		this.height = this.image.height * PIXEL_SIZE * scale;
 	}
 }
 
@@ -216,16 +357,17 @@ class Coin extends Tile {
 			this.yVel += (9.8 - this.yVel) * 0.1;
 			this.rotation += this.xVel + this.yVel / 10;
 		}
-		if (Math.abs(this.x - player.x) + Math.abs(this.y - player.y) < 500 && player.dead == false) {
-			var xVel = 300 / (Math.abs(player.x - this.x) + Math.abs(player.y - this.y));
-			var yVel = 300 / (Math.abs(player.y - this.y) + Math.abs(player.x - this.x));
+		if (distBetween(this, player) < 500 && player.dead == false) {
+			var dist = distBetween(this, player);
+			var xVel = 300 / dist;
+			var yVel = 300 / dist;
 			if (xVel > 0 && xVel > this.MAX_SPEED) xVel = this.MAX_SPEED;
 			if (yVel > 0 && yVel > this.MAX_SPEED) yVel = this.MAX_SPEED;
 			
 			this.pointTo = Math.atan2(player.y - this.y, player.x - this.x);
 			this.x += Math.cos(this.pointTo) * xVel;
 			this.y += Math.sin(this.pointTo) * yVel;
-			if (Math.abs(this.x - player.x) + Math.abs(this.y - player.y) < 20) {
+			if (dist < 20) {
 				player.money += 1;
 				FRAME.playSound("boop");
 				this.dead = true;
@@ -273,16 +415,17 @@ class Timer extends Actor {
 class ItemCard extends Actor {
 	constructor(item) {
 		super(mouse.x, mouse.y);
-		this.width = 200;
-		this.height = 75;
-		this.offset = 0;
 		this.nameText = new Text(10, -70, item.name, "Arial", "#FFF", 24);
-		this.typeText = new Text(this.width-10, -70, item.type, "Arial", "#FFF", 24, "right");
+		this.typeText = new Text(100, -70, item.type, "Arial", "#FFF", 24, "right");
 		this.priceText = new Text(10, -35, "price: ", "Arial", "#FFF", 24);
-		this.moneyImage = new ImageActor(85, -12, FRAME.getImage("coin"), 15);
+		this.moneyImage = new ImageActor(85, -11, FRAME.getImage("coin"), 15);
 		this.numberText = new Text(98, -34, item.price.toString(), "Arial", "#66EE99", 24);
 		if (player.money < item.price)
 			this.numberText.fillStyle = "#EE4444";
+		this.width = this.nameText.width + this.typeText.width + 50;
+		this.height = 75;
+		this.offset = 0;
+		this.typeText.x = this.width-10;
 		this.update(0);
 	}
 	update(realTime) {
@@ -299,12 +442,14 @@ class ItemCard extends Actor {
 	}
 	render() {
 		this.ctx.fillStyle = "#101010";
+		this.ctx.globalAlpha = 0.9;
 		this.ctx.fillRect(this.offset, -this.height, this.width, this.height);
 		this.nameText.draw();
 		this.typeText.draw();
 		this.priceText.draw();
 		this.moneyImage.draw();
 		this.numberText.draw();
+		this.ctx.globalAlpha = 1.0;
 	}
 }
 
@@ -476,7 +621,7 @@ class TileItem extends Actor {
 }
 
 class Inventory extends Actor {
-	constructor(owner, x, y) {
+	constructor(owner, x, y, rows=2) {
 		super(0,0);
 		if (x === undefined) x = 0;
 		if (y === undefined) y = 0;
@@ -489,10 +634,10 @@ class Inventory extends Actor {
 		this.mouseOverIndex = -1;
 		this.owner = owner;
 		
-		for (var i = -GAME_WIDTH/2 + 100; i < GAME_WIDTH/2; i += 200) {
-			for (var j = 0; j < GAME_HEIGHT/2; j += 200) {
+		for (var j = 0; j < rows; j += 1) {
+			for (var i = 0; i < 6; i += 1) {
 				this.objects.push(null);
-				this.collection.add(new InvSquare(i+x, j+y));
+				this.collection.add(new InvSquare(i*200-GAME_WIDTH/2+100+x, j*200+y));
 			}
 		}
 	}
@@ -752,5 +897,31 @@ class ErrorParticle extends Actor {
 	render() {
 		this.ctx.fillStyle = "#EE4444";
 		this.ctx.fillRect(-this.width/2, -this.height/2, this.width, this.height);
+	}
+}
+
+class SmokeParticle extends Actor {
+	constructor(x, y, size=1) {
+		super(x, y);
+		this.alpha = 1.0;
+		this.xVel = Math.random() * 2 - 1;
+		this.yVel = -Math.random();
+		var img = "smoke" + Math.floor(Math.random() * 2 + 1);
+		this.image = FRAME.getImage(img);
+		this.width=this.height = this.image.width * size;
+		this.rotationRate = Math.random() * 0.2 - 0.1;
+	}
+	update(realTime) {
+		this.rotation += this.rotationRate;
+		this.x += this.xVel;
+		this.y += this.yVel;
+		this.alpha -= Math.random() * 0.025;
+		if (this.alpha <= 0.01) this.dead = true;
+		this.yVel -= 0.01;
+	}
+	render() {
+		this.ctx.globalAlpha = this.alpha;
+		this.ctx.drawImage(this.image, -this.width/2, -this.height/2, this.width, this.height);
+		this.ctx.globalAlpha = 1.0;
 	}
 }

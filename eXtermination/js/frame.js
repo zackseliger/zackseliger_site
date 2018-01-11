@@ -189,6 +189,9 @@ class Text {
 		this.rotation = rot || 0;
 		this.ctx = ctx || FRAME.ctx;
 		
+		this.ctx.font = this.fontsize + "px " + this.font;
+		this.width = this.ctx.measureText(this.text).width;
+		
 		this.update = function(deltaTime) {}
 		this.render = function() {}
 		this.draw = function() {
@@ -196,16 +199,16 @@ class Text {
 			this.ctx.rotate(this.rotation);
 				this.ctx.font = this.fontsize + "px " + this.font;
 				this.ctx.fillStyle = this.fillStyle;
-				var textWidth = this.ctx.measureText(this.text).width;
+				this.width = this.ctx.measureText(this.text).width;
 				this.render();//whatever extra stuff
 				if (this.justify == "left") {
 					this.ctx.fillText(this.text, 0, this.fontsize);
 				}
 				else if (this.justify == "right") {
-					this.ctx.fillText(this.text, -textWidth, this.fontsize);
+					this.ctx.fillText(this.text, -this.width, this.fontsize);
 				}
 				else {
-					this.ctx.fillText(this.text, -textWidth / 2, this.fontsize);
+					this.ctx.fillText(this.text, -this.width / 2, this.fontsize);
 				}
 			this.ctx.rotate(-this.rotation);
 			this.ctx.translate(-this.x, -this.y);

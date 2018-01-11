@@ -12,10 +12,14 @@ class Character extends Actor {
 		this.type = "c";
 		this.shotTimer = new Timer(40, -40, 1);
 		
+		//equip/visual stuff
 		this.image = null;
 		this.inRightHand = null;
 		this.rightHandx = 0;
 		this.rightHandy = 0;
+		this.helmet = null;
+		this.headY = -2 * PIXEL_SIZE;
+		this.torso = null;
 	}
 	setScale(scale) {
 		this.scale = scale;
@@ -24,6 +28,12 @@ class Character extends Actor {
 		if (this.inRightHand != null) {
 			this.inRightHand.width = this.inRightHand.image.width * PIXEL_SIZE * this.scale;
 			this.inRightHand.height = this.inRightHand.image.height * PIXEL_SIZE * this.scale;
+		}
+		if (this.helmet != null) {
+			this.helmet.setScale(scale);
+		}
+		if (this.torso != null) {
+			this.torso.setScale(scale);
 		}
 	}
 	update(realTime) {
@@ -79,16 +89,42 @@ class Character extends Actor {
 			}
 		}
 		
-		//bullet
+		//helmet
+		if (this.helmet != null) {
+			this.helmet.x = PIXEL_SIZE/2*this.scale;
+			this.helmet.y = this.headY*this.scale;
+			if (this.image == this.walkStrip.images[1]) {
+				this.helmet.y += PIXEL_SIZE*this.scale;
+			}
+		}
+		
+		//torso
+		if (this.torso != null) {
+			this.torso.y = this.height/2 - PIXEL_SIZE*this.scale;
+			if (this.image == this.walkStrip.images[1]) {
+				this.torso.y += PIXEL_SIZE*this.scale;
+			}
+		}
+		
+		//bullets
 		for (var i = 0; i < bullets.objects.length; i++) {
 			if (bullets.objects[i].owner !== this && checkCollision(this, bullets.objects[i])) {
+				bullets.objects[i].hitEnemy();
 				this.dead = true;
 				if (this.inRightHand !== null) this.dropRightHandItem();
 			}
 		}
 		
-		//drop money
+		//on death
 		if (this.dead == true) {
+			//play sound
+			var soundName = "hurt" + (Math.floor(Math.random() * 3) + 1);
+			var id = FRAME.playSound(soundName);
+			var vol = 90/distBetween(this, player);
+			//particles
+			for (var i = 0; i < 20; i++)
+				particles.add(new SmokeParticle(this.x + Math.random() * this.width - this.width/2, this.y + Math.random() * this.height - this.height/2, PIXEL_SIZE + Math.random() * 2));
+			//money
 			var numMoney = this.money / 4;
 			if (this.money == undefined) numMoney = 25;
 			else this.money -= Math.round(this.money/4);
@@ -100,6 +136,8 @@ class Character extends Actor {
 	render() {
 		if (this.facingRight == false) this.ctx.scale(-1, 1);
 		this.ctx.drawImage(this.image, -this.width / 2, -this.height / 2, this.width, this.height);
+		if (this.helmet != null) this.helmet.draw();
+		if (this.torso != null) this.torso.draw();
 		if (manager.currentScene == "fight") this.shotTimer.draw();
 		if (this.facingRight == false) this.ctx.scale(-1, 1);
 	}
@@ -107,6 +145,10 @@ class Character extends Actor {
 		if (obj == null) obj = new EmptyGun();
 		this.inRightHand = obj;
 		this.inRightHand.owner = this;
+		if (this.inRightHand != null) {
+			this.inRightHand.width = this.inRightHand.image.width * PIXEL_SIZE * this.scale;
+			this.inRightHand.height = this.inRightHand.image.height * PIXEL_SIZE * this.scale;
+		}
 		
 		if (this.facingRight) this.inRightHand.x = this.x + this.rightHandx*this.scale;
 		else this.inRightHand.x = this.x + -this.rightHandx*this.scale;
@@ -115,9 +157,32 @@ class Character extends Actor {
 	}
 	dropRightHandItem() {
 		if (this.inRightHand != null) {
-			this.inRightHand.dropHeight = this.rightHandy;
+			this.inRightHand.dropHeight = this.rightHandy+PIXEL_SIZE;
 			this.inRightHand.owner = null;
 			this.inRightHand = null;
+		}
+	}
+	putOnHead(obj) {
+		if (obj == null) return;
+		this.helmet = obj;
+		this.helmet.setScale(this.scale);
+		this.helmet.x = PIXEL_SIZE/2*this.scale;
+		this.helmet.y = this.headY*this.scale;
+	}
+	takeOffHelmet() {
+		if (this.helmet != null) {
+			this.helmet = null;
+		}
+	}
+	putOnTorso(obj) {
+		if (obj == null) return;
+		this.torso = obj;
+		this.torso.setScale(this.scale);
+		this.torso.y = this.height/2 - PIXEL_SIZE*this.scale;
+	}
+	takeOffTorso() {
+		if (this.torso != null) {
+			this.torso = null;
 		}
 	}
 	pointAt(xpos, ypos) {
@@ -154,14 +219,20 @@ class Player extends Character {
 		this.idleImage = this.walkStrip.images[0];
 		
 		//player-specific stuff
+		this.spaceEnabled = false;
 		this.stage = 1;
 		this.money = 0;
 		this.type = "p";
 		this.inventory = new Inventory(this, 0, 125);
-		this.rightHandSquare = new InvSquare(-100, -175, "gun");
+		
+		this.rightHandSquare = new InvSquare(-100, -175, "weapon");
 		this.inventory.addSlot(this.rightHandSquare);
 		this.weapon = new Gun();
-		this.inventory.addItemAtIndex(new TileItem(this.weapon.image, "gun", "pistol", 0), this.inventory.collection.objects.indexOf(this.rightHandSquare));
+		this.inventory.addItemAtIndex(new TileItem(this.weapon.image, "weapon", "pistol", 0), this.inventory.collection.objects.indexOf(this.rightHandSquare));
+		this.helmetSquare = new InvSquare(-100, -300, "helmet");
+		this.inventory.addSlot(this.helmetSquare);
+		this.torsoSquare = new InvSquare(-100, -50, "torso");
+		this.inventory.addSlot(this.torsoSquare);
 		
 		this.putInRightHand(this.weapon);
 		this.facingRight = true;
@@ -188,11 +259,34 @@ class Player extends Character {
 			this.moveX(PLAYER_SPEED);
 		}
 		
+		for (var i = 0; i < weapons.objects.length; i++) {//picking up guns
+			if (weapons.objects[i].owner == null && distBetween(this, weapons.objects[i]) < this.width*1.5 + weapons.objects[i].width) {
+				if (keyboard[32] && this.spaceEnabled) {
+					this.dropRightHandItem();
+					this.putInRightHand(weapons.objects[i]);
+					FRAME.playSound("swap");
+				}
+				else {
+					weapons.objects[i].highlight();
+				}
+				
+				break;
+			}
+		}
+		if (keyboard[32]) {//space
+			this.spaceEnabled = false;
+		}
+		else {
+			this.spaceEnabled = true;
+		}
+		
+		
 		//gun stuff
 		this.pointAt(mouse.x, mouse.y);
 		if (mouse.clicking) this.shoot();
 	}
-	putInRightHand(obj) {
+	changeWeapon(obj) {
+		this.dropRightHandItem();
 		super.putInRightHand(obj);
 		this.weapon = obj;
 	}
@@ -200,6 +294,7 @@ class Player extends Character {
 		super.reset();
 		this.dead = false;
 		this.putInRightHand(this.weapon);
+		if (this.weapon != null) this.weapon.rotation = 0;
 	}
 }
 
