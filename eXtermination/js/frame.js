@@ -15,8 +15,8 @@ FRAME.resize = function() {
 	
 	FRAME.canvas.width = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
 	FRAME.canvas.height = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight;
-	FRAME.x = stageWidth / 2 - FRAME.game_width * FRAME.scaleX / 2;
-	FRAME.y = stageHeight / 2 - FRAME.game_height * FRAME.scaleY / 2;
+	//FRAME.x = stageWidth / 2 - FRAME.game_width * FRAME.scaleX / 2;
+	//FRAME.y = stageHeight / 2 - FRAME.game_height * FRAME.scaleY / 2;
 	
 	FRAME.ctx.imageSmoothingEnabled = FRAME.smoothing;
 }

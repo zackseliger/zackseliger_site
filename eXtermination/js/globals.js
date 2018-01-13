@@ -10,7 +10,7 @@ var PIXEL_SIZE = 7;
 var TILE_SIZE = 75;
 var PLAYER_SPEED = 5;
 
-//collision functions (we have 3)
+//collision functions (we have a few)
 function checkSpecialCollision(obj1, obj2) {
 	if (obj1.width === undefined) {
 		obj1.width = 1;
@@ -40,6 +40,21 @@ function checkCollision(obj1, obj2) {
 			obj1.x + obj1.width/2 > obj2.x - obj2.width/2 &&
 			obj1.y - obj1.height/2 < obj2.y + obj2.height/2 &&
 			obj1.y + obj1.height/2 > obj2.y - obj2.height/2);
+}
+function checkGunCollision(obj1, gun) {
+	if (obj1.width === undefined) {
+		obj1.width = 1;
+		obj1.height = 1;
+	}
+	if (gun.width === undefined) {
+		gun.width = 1;
+		gun.height = 1;
+	}
+	
+	return (obj1.x - obj1.width/2 < gun.x + gun.width &&
+			obj1.x + obj1.width/2 > gun.x &&
+			obj1.y - obj1.height/2 < gun.y &&
+			obj1.y + obj1.height/2 > gun.y - gun.height);
 }
 function checkCoveredBy(obj1, obj2) {//if obj1 is inside obj2
 	if (obj1.width === undefined) {
@@ -83,13 +98,18 @@ function buildLevel(input) {
 			floor = new FloorRect(parseFloat(param[1]), parseFloat(param[2]));
 		}
 		else if (param[0] == "ce") {
-			characters.add(new ChaserEnemy(parseFloat(param[1]), parseFloat(param[2])));
+			characters.add(new ChaserEnemy(parseFloat(param[1]), parseFloat(param[2]), param[3]));
 		}
 		else if (param[0] == "pe") {
-			characters.add(new ProximityEnemy(parseFloat(param[1]), parseFloat(param[2])));
+			characters.add(new ProximityEnemy(parseFloat(param[1]), parseFloat(param[2]), param[3]));
 		}
 		else if (param[0] == "re") {
-			characters.add(new RandomEnemy(parseFloat(param[1]), parseFloat(param[2])));
+			characters.add(new RandomEnemy(parseFloat(param[1]), parseFloat(param[2]), param[3]));
+		}
+		else if (param[0][1] == "w" || param[0] == "mgw") {
+			var wep = weaponFromString(param[0]);
+			wep.x = parseFloat(param[1]);
+			wep.y = parseFloat(param[2]);
 		}
 		else if (param[0] == "t") {
 			tiles.add(new Tile(parseFloat(param[1]), parseFloat(param[2]), parseFloat(param[3]), parseFloat(param[4])));
@@ -140,6 +160,25 @@ function coinExists() {
 	}
 	return false;
 }
+function weaponFromString(str) {
+	var weapon = new EmptyGun();
+	if (str == "pw") {
+		weapon = new Gun();
+	}
+	else if (str == "sw") {
+		weapon = new Shotgun();
+	}
+	else if (str == "mgw") {
+		weapon = new Machinegun();
+	}
+	else if (str == "gw") {
+		weapon = new GrenadeLauncher();
+	}
+	else if (str == "mw") {
+		weapon = new Mine();
+	}
+	return weapon;
+}
 
 ////////////////////////
 /////////EDITOR/////////
@@ -157,8 +196,12 @@ function editorDelete() {
 	if (tiles.objects.indexOf(editorSelected) != -1) {
 		tiles.remove(editorSelected);
 	}
-	if (characters.objects.indexOf(editorSelected) != -1) {
+	else if (characters.objects.indexOf(editorSelected) != -1 && editorSelected != player) {
+		weapons.remove(editorSelected.inRightHand);
 		characters.remove(editorSelected);
+	}
+	else if (weapons.objects.indexOf(editorSelected) != -1) {
+		weapons.remove(editorSelected);
 	}
 }
 function editorAdd() {
@@ -168,6 +211,11 @@ function editorAdd() {
 	else if (type == "pe") characters.add(new ProximityEnemy());
 	else if (type == "ce") characters.add(new ChaserEnemy());
 	else if (type == "re") characters.add(new RandomEnemy());
+	else if (type == "pw") weapons.add(new Gun());
+	else if (type == "sw") weapons.add(new Shotgun());
+	else if (type == "mgw") weapons.add(new Machinegun());
+	else if (type == "gw") weapons.add(new GrenadeLauncher());
+	else if (type == "mw") weapons.add(new Mine());
 }
 function editorSave() {
 	var level = "";
@@ -176,11 +224,16 @@ function editorSave() {
 	for (var i = 0; i < characters.objects.length; i++) {
 		var type = characters.objects[i].type;
 		if (type != "p" && type != "c") {
-			level += type + " " + characters.objects[i].x + " " + characters.objects[i].y + "~";
+			level += type + " " + characters.objects[i].x + " " + characters.objects[i].y + " " + characters.objects[i].inRightHand.type + "~";
 		}
 	}
 	for (var i = 0; i < tiles.objects.length; i++) {
 		level += "t " + tiles.objects[i].x + " " + tiles.objects[i].y + " " + tiles.objects[i].width + " " + tiles.objects[i].height + "~";
+	}
+	for (var i = 0; i < weapons.objects.length; i++) {
+		if (weapons.objects[i].owner == null) {
+			level += weapons.objects[i].type + " " + weapons.objects[i].x + " " + weapons.objects[i].y + "~";
+		}
 	}
 	
 	currentLevel = level;
@@ -226,6 +279,7 @@ FRAME.loadImage("assets/img/smoke1.png", "smoke1");
 FRAME.loadImage("assets/img/smoke2.png", "smoke2");
 FRAME.loadImage("assets/img/coin.png", "coin");
 FRAME.loadImage("assets/img/door.png", "door");
+FRAME.loadImage("assets/img/tile.png", "tile");
 
 ////////////////////////
 /////////SOUNDS/////////

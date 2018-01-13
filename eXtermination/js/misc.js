@@ -84,7 +84,7 @@ class Grenade extends Bullet {
 		this.width *= 2;
 		this.height *= 2;
 		this.dist = distBetween(this, mouse);
-		this.numBullets = 20;
+		this.numBullets = 30;
 	}
 	update(realTime) {
 		super.update(realTime);
@@ -137,12 +137,12 @@ class Gun extends Actor {
 		this.yVel = 0;
 		this.xVel = Math.random() * 4 - 2;
 		
+		this.type = "pw";
 		this.highlighted = false;
 		this.owner = null;
 		this.shotTimer = 0.5;
 		this.shooting = false;
 		this.timer = 0;
-		this.times = 0;
 		weapons.add(this);
 	}
 	update(realTime) {
@@ -212,6 +212,7 @@ class EmptyGun extends Gun {
 	constructor() {
 		super(0,0);
 		this.shotTimer = 0;
+		this.type = "ew";
 	}
 	update(realTime) {
 		if (this.owner == null) this.dead = true;
@@ -224,15 +225,16 @@ class Shotgun extends Gun {
 	constructor (x, y) {
 		super(x, y, FRAME.getImage("shotgun"));
 		
+		this.type = "sw";
 		this.shotTimer = 1;
+		this.numBullets = 3;
 	}
 	fireRound() {
 		var soundName = "shotgun1";
 		var id = FRAME.playSound(soundName);
 		var vol = 90/distBetween(this, player);
 		FRAME.sounds.get(soundName).volume(vol, id);
-		var numBullets = 3;
-		for (var i = 0; i < numBullets; i++) {
+		for (var i = 0; i < this.numBullets; i++) {
 			if (Math.abs(this.rotation) < Math.PI / 2) {
 				new Bullet(this.x + 1.5*PIXEL_SIZE*Math.sin(this.rotation), this.y - 1.5*PIXEL_SIZE*Math.cos(this.rotation), this.rotation + Math.random() * 0.5 - 0.25, 13 + Math.random() * 3 - 1, this.owner);
 			}
@@ -247,6 +249,7 @@ class Machinegun extends Gun {
 	constructor(x, y) {
 		super(x, y, FRAME.getImage("machinegun"));
 		
+		this.type = "mgw";
 		this.shotTimer = 0.1;
 	}
 	fireRound() {
@@ -267,6 +270,7 @@ class GrenadeLauncher extends Gun {
 	constructor(x, y) {
 		super(x, y, FRAME.getImage("launcher"));
 		
+		this.type = "gw";
 		this.shotTimer = 1.5;
 	}
 	fireRound() {
@@ -287,6 +291,7 @@ class Mine extends Gun {
 	constructor(x, y) {
 		super(x, y, FRAME.getImage("mine"));
 		
+		this.type = "mw";
 		this.shotTimer = 0.75;
 	}
 	fireRound() {
@@ -413,10 +418,12 @@ class Timer extends Actor {
 }
 
 class ItemCard extends Actor {
-	constructor(item) {
+	constructor(item, showMoney) {
 		super(mouse.x, mouse.y);
+		this.showMoney = showMoney;
+		if (showMoney == undefined) this.showMoney = true;
 		this.nameText = new Text(10, -70, item.name, "Arial", "#FFF", 24);
-		this.typeText = new Text(100, -70, item.type, "Arial", "#FFF", 24, "right");
+		this.typeText = new Text(100, -70, "("+item.type+")", "Arial", "#FFF", 24, "right");
 		this.priceText = new Text(10, -35, "price: ", "Arial", "#FFF", 24);
 		this.moneyImage = new ImageActor(85, -11, FRAME.getImage("coin"), 15);
 		this.numberText = new Text(98, -34, item.price.toString(), "Arial", "#66EE99", 24);
@@ -424,6 +431,11 @@ class ItemCard extends Actor {
 			this.numberText.fillStyle = "#EE4444";
 		this.width = this.nameText.width + this.typeText.width + 50;
 		this.height = 75;
+		if (this.showMoney == false) {
+			this.height = 40;
+			this.nameText.y += 35;
+			this.typeText.y += 35;
+		}
 		this.offset = 0;
 		this.typeText.x = this.width-10;
 		this.update(0);
@@ -446,9 +458,11 @@ class ItemCard extends Actor {
 		this.ctx.fillRect(this.offset, -this.height, this.width, this.height);
 		this.nameText.draw();
 		this.typeText.draw();
-		this.priceText.draw();
-		this.moneyImage.draw();
-		this.numberText.draw();
+		if (this.showMoney) {
+			this.priceText.draw();
+			this.moneyImage.draw();
+			this.numberText.draw();
+		}
 		this.ctx.globalAlpha = 1.0;
 	}
 }
@@ -456,7 +470,8 @@ class ItemCard extends Actor {
 class GUI extends Actor {
 	constructor(target) {
 		super(0,0);
-		this.target = target;
+		if (target != undefined) this.target = target;
+		else this.target = player;
 		
 		this.showingEndScreen = false;
 		this.endScreenTimer = 0.0;
@@ -568,6 +583,152 @@ class GUI extends Actor {
 	hideItemCard() {
 		this.showingItemCard = false;
 		this.itemCard = null;
+	}
+}
+
+class ContainerItem extends Actor {
+	constructor(img, x=0, y=0) {
+		super();
+		this.realX = x;
+		this.realY = y;
+		this.image = img;
+		this.realWidth = this.image.width*PIXEL_SIZE;
+		this.realHeight = this.image.height*PIXEL_SIZE;
+		
+		this.width = this.realWidth/FRAME.scaleX;
+		this.height = this.realHeight/FRAME.scaleY;
+		this.prevScale = 0;
+		this.selected = false;
+	}
+	update(realTime) {
+		this.x = this.realX/FRAME.scaleX;
+		this.y = this.realY/FRAME.scaleY;
+		if (this.prevScale != FRAME.scaleX) {
+			this.width = this.realWidth/FRAME.scaleX;
+			this.height = this.realHeight/FRAME.scaleY;
+			
+			this.prevScale = FRAME.scaleX;
+		}
+		if (checkCollision(this, mouse)) {
+			this.selected = true;
+		}
+		else this.selected = false;
+	}
+	render() {
+		if (this.selected) this.ctx.globalAlpha = 0.8;
+		this.ctx.drawImage(this.image, -this.width/2, -this.height/2, this.width, this.height);
+		this.ctx.globalAlpha = 1.0;
+	}
+}
+
+class Container extends Actor {
+	constructor(x, y, w, h) {
+		super();
+		this.realX = x;
+		this.realY = y;
+		this.realWidth = w;
+		this.realHeight = h;
+		this.objects = [];
+		
+		this.width = this.realWidth/FRAME.scaleX;
+		this.height = this.realHeight/FRAME.scaleY;
+		this.prevScale = 0;
+		this.selectedIndex = -1;
+	}
+	update(realTime) {
+		if (this.prevScale != FRAME.scaleX) {
+			this.width = this.realWidth/FRAME.scaleX;
+			this.height = this.realHeight/FRAME.scaleY;
+			this.x = this.realX/FRAME.scaleX;
+			this.y = this.realY/FRAME.scaleY;
+			
+			this.prevScale = FRAME.scaleX;
+		}
+		
+		mouse.x += FRAME.x / FRAME.scaleX;
+		mouse.y += FRAME.y / FRAME.scaleY;
+		var h = this.realY;
+		var objectSelected = false;
+		if (this.objects.length > 0) h = this.realY + 10;
+		for (var i = 0; i < this.objects.length; i++) {
+			h += this.objects[i].realHeight/2;
+			this.objects[i].update(realTime);
+			if (this.objects[i].selected == true) {
+				this.selectedIndex = i;
+				objectSelected = true;
+			}
+			this.objects[i].realX = this.realX;
+			this.objects[i].realY = h;
+			h += this.objects[i].realHeight/2 + 10;
+		}
+		if (objectSelected == false) this.selectedIndex = -1;
+		mouse.x -= FRAME.x / FRAME.scaleX;
+		mouse.y -= FRAME.y / FRAME.scaleY;
+	}
+	render() {
+		this.ctx.fillStyle = "#FFF";
+		this.ctx.fillRect(-this.width/2, 0, this.width, this.height);
+	}
+	draw() {
+		super.draw();
+		for (var i = 0; i < this.objects.length; i++) {
+			this.objects[i].draw();
+		}
+	}
+	addObject(img) {
+		var obj = new ContainerItem(img);
+		this.objects.push(obj);
+	}
+	getSelectedIndex() {
+		return this.selectedIndex;
+	}
+	getSelectedObject() {
+		return this.objects[this.selectedIndex];
+	}
+}
+
+class editorGUI extends Actor {
+	constructor() {
+		super(0,0);
+		
+		this.leftContainer = new Container(50,window.innerHeight/2-150,100,300);
+		this.leftContainer.addObject(FRAME.getImage("chaserEnemyWalk1"));
+		this.leftContainer.addObject(FRAME.getImage("proximityEnemyWalk1"));
+		this.leftContainer.addObject(FRAME.getImage("randomEnemyWalk1"));
+		
+		this.rightContainer = new Container(window.innerWidth - 100, window.innerHeight/2-100, 100, 200);
+		this.rightContainer.addObject(FRAME.getImage("tile"));
+		this.rightContainer.addObject(FRAME.getImage("pistol"));
+		this.rightContainer.addObject(FRAME.getImage("shotgun"));
+		this.rightContainer.addObject(FRAME.getImage("machinegun"));
+		this.rightContainer.addObject(FRAME.getImage("launcher"));
+		this.rightContainer.addObject(FRAME.getImage("mine"));
+	}
+	update(realTime) {
+		this.leftContainer.update(realTime);
+		this.rightContainer.update(realTime);
+		
+		this.leftContainer.realY = window.innerHeight/2-150;
+		this.leftContainer.y = this.leftContainer.realY/FRAME.scaleY;
+		this.rightContainer.realY = window.innerHeight/2-100;
+		this.rightContainer.y = this.rightContainer.realY/FRAME.scaleY;
+		this.rightContainer.realX = window.innerWidth - 50;
+		this.rightContainer.x = this.rightContainer.realX/FRAME.scaleX;
+	}
+	render() {
+		this.leftContainer.draw();
+		this.rightContainer.draw();
+	}
+	getSelectedObject() {
+		if (this.leftContainer.getSelectedIndex() != -1) {
+			return this.leftContainer.getSelectedObject();
+		}
+		else if (this.rightContainer.getSelectedIndex() != -1) {
+			return this.rightContainer.getSelectedObject();
+		}
+		else {
+			return null;
+		}
 	}
 }
 
@@ -738,6 +899,9 @@ class Inventory extends Actor {
 		this.objects[index] = item;
 		item.x = this.collection.objects[index].x;
 		item.y = this.collection.objects[index].y;
+	}
+	getItemAtIndex(index) {
+		return this.objects[index];
 	}
 	removeItem(item) {
 		if (item == this.mouseOverObject) {

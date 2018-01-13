@@ -1,5 +1,5 @@
 class Character extends Actor {
-	constructor(x, y) {
+	constructor(x, y, gun) {
 		super(x||0, y||0);
 		
 		this.width = 0;
@@ -20,6 +20,8 @@ class Character extends Actor {
 		this.helmet = null;
 		this.headY = -2 * PIXEL_SIZE;
 		this.torso = null;
+		
+		this.putInRightHand(weaponFromString(gun));
 	}
 	setScale(scale) {
 		this.scale = scale;
@@ -203,6 +205,8 @@ class Character extends Actor {
 	}
 	reset() {
 		this.image = this.idleImage;
+		this.putOnTorso(this.torso);
+		this.putOnHead(this.helmet);
 		this.rotation = 0;
 		this.facingRight = true;
 		this.setScale(1);
@@ -280,7 +284,6 @@ class Player extends Character {
 			this.spaceEnabled = true;
 		}
 		
-		
 		//gun stuff
 		this.pointAt(mouse.x, mouse.y);
 		if (mouse.clicking) this.shoot();
@@ -299,16 +302,14 @@ class Player extends Character {
 }
 
 class ChaserEnemy extends Character {
-	constructor(x, y, target) {
-		super(x, y);
+	constructor(x, y, gun, target) {
+		super(x, y, gun);
 		
 		this.walkStrip = new ImageStrip();
 		this.walkStrip.add(FRAME.getImage("chaserEnemyWalk1"));
 		this.walkStrip.add(FRAME.getImage("chaserEnemyWalk2"));
 		
 		this.idleImage = this.walkStrip.images[0];
-		this.putInRightHand(new Gun());
-		this.inRightHand.timer = 0.5;
 		if (target === undefined) this.target = player;
 		else this.target = target;
 		this.type = "ce";
@@ -347,15 +348,15 @@ class ChaserEnemy extends Character {
 }
 
 class ProximityEnemy extends Character {
-	constructor(x, y, target) {
-		super(x, y);
+	constructor(x, y, gun, target) {
+		super(x, y, gun);
 		
 		this.walkStrip = new ImageStrip();
 		this.walkStrip.add(FRAME.getImage("proximityEnemyWalk1"));
 		this.walkStrip.add(FRAME.getImage("proximityEnemyWalk2"));
 		
 		this.idleImage = this.walkStrip.images[0];
-		this.putInRightHand(new Shotgun());
+		//this.putInRightHand(new Shotgun());
 		if (target === undefined) this.target = player;
 		else this.target = target;
 		this.type = "pe";
@@ -392,15 +393,15 @@ class ProximityEnemy extends Character {
 }
 
 class RandomEnemy extends Character {
-	constructor(x, y, target) {
-		super(x, y);
+	constructor(x, y, gun, target) {
+		super(x, y, gun);
 		
 		this.walkStrip = new ImageStrip();
 		this.walkStrip.add(FRAME.getImage("randomEnemyWalk1"));
 		this.walkStrip.add(FRAME.getImage("randomEnemyWalk2"));
 		
 		this.idleImage = this.walkStrip.images[0];
-		this.putInRightHand(new Gun());
+		//this.putInRightHand(new Gun());
 		if (target === undefined) this.target = player;
 		else this.target = target;
 		this.type = "re";

@@ -232,6 +232,7 @@ class EditorScene extends Scene {
 		this.looseSelected = null;
 		this.level = "";
 		this.prevMouseClicking = mouse.clicking;
+		this.gui = new editorGUI();
 	}
 	update(realTime) {
 		//guns in hands
@@ -258,6 +259,56 @@ class EditorScene extends Scene {
 					break;
 				}
 			}
+			for (var i = 0; i < weapons.objects.length; i++) {
+				if (weapons.objects[i].owner == null && checkGunCollision(mouse, weapons.objects[i])) {
+					this.selected = weapons.objects[i];
+					this.looseSelected = weapons.objects[i];
+					break;
+				}
+			}
+			
+			//drag-n-drop
+			if (this.gui.getSelectedObject() != null) {
+				var selectedImage = this.gui.getSelectedObject().image;
+				var newObj = null;
+				if (selectedImage == FRAME.getImage("chaserEnemyWalk1")) {
+					newObj = new ChaserEnemy();
+				}
+				else if (selectedImage == FRAME.getImage("proximityEnemyWalk1")) {
+					newObj = new ProximityEnemy();
+				}
+				else if (selectedImage == FRAME.getImage("randomEnemyWalk1")) {
+					newObj = new RandomEnemy();
+				}
+				else if (selectedImage == FRAME.getImage("tile")) {
+					newObj = new Tile(0,0,50,50);
+				}
+				else if (selectedImage == FRAME.getImage("pistol")) {
+					newObj = new Gun();
+				}
+				else if (selectedImage == FRAME.getImage("shotgun")) {
+					newObj = new Shotgun();
+				}
+				else if (selectedImage == FRAME.getImage("machinegun")) {
+					newObj = new Machinegun();
+				}
+				else if (selectedImage == FRAME.getImage("launcher")) {
+					newObj = new GrenadeLauncher();
+				}
+				else if (selectedImage == FRAME.getImage("mine")) {
+					newObj = new Mine();
+				}
+				newObj.x = mouse.x;
+				newObj.y = mouse.y;
+				if (newObj.walkStrip != undefined) {
+					characters.add(newObj);
+				}
+				else if (newObj.solid != undefined) {
+					tiles.add(newObj);
+				}
+				this.selected = newObj;
+				this.looseSelected = newObj;
+			}
 			
 			editorSelected = this.looseSelected;
 			if (this.selected != null) {
@@ -274,14 +325,29 @@ class EditorScene extends Scene {
 			document.getElementById("x").value = Math.floor(this.selected.x);
 			document.getElementById("y").value = Math.floor(this.selected.y);
 		}
+		//swapping guns n stuff
+		if (this.prevMouseClicking == true && mouse.clicking == false && weapons.objects.indexOf(this.selected) != -1) {
+			for (var i = 0; i < characters.objects.length; i++) {
+				if (checkGunCollision(characters.objects[i], this.selected) && characters.objects[i] != player) {
+					var dropped = characters.objects[i].inRightHand;
+					characters.objects[i].dropRightHandItem();
+					characters.objects[i].putInRightHand(this.selected);
+					dropped.y = parseInt(characters.objects[i].y + characters.objects[i].height/2);
+					dropped.x = parseInt(characters.objects[i].x);
+					this.selected = null;
+					this.looseSelected = null;
+					break;
+				}
+			}
+		}
 		this.prevMouseClicking = mouse.clicking;
 		
 		//changing things via keyboard
 		if (this.looseSelected != null && mouse.clicking == false) {
 			this.looseSelected.x = parseFloat(document.getElementById("x").value);
 			this.looseSelected.y = parseFloat(document.getElementById("y").value);
-			this.looseSelected.width = document.getElementById("w").value;
-			this.looseSelected.height = document.getElementById("h").value;
+			this.looseSelected.width = parseFloat(document.getElementById("w").value);
+			this.looseSelected.height = parseFloat(document.getElementById("h").value);
 		}
 		if (mouse.clicking == false) {
 			floor.width = document.getElementById("fw").value;
@@ -299,12 +365,20 @@ class EditorScene extends Scene {
 		if (mouse.deltaY < 0) FRAME.scaleX = FRAME.scaleY = FRAME.scaleX + 0.1
 		if (keyboard[46]) editorDelete();
 		if (keyboard[13]) editorAdd();
+		//zoom fix
+		if (FRAME.scaleX < 0.1) FRAME.scaleX = FRAME.scaleY = 0.1;
+		
+		//gui
+		this.gui.update(realTime);
+		this.gui.x = -FRAME.x/FRAME.scaleX;
+		this.gui.y = -FRAME.y/FRAME.scaleY;
 	}
 	render() {
 		floor.draw();
 		tiles.draw();
 		characters.draw();
 		weapons.draw();
+		this.gui.draw();
 	}
 	onLoad() {
 		player.reset();
@@ -357,7 +431,7 @@ class ShopScene extends Scene {
 			FRAME.stopSound("select");
 		if (this.shopInv.mouseOverObject != null) {//mousing over an item
 			if (this.gui.showingItemCard == false)
-				this.gui.showItemCard(new ItemCard(this.shopInv.mouseOverObject));
+				this.gui.showItemCard(new ItemCard(this.shopInv.mouseOverObject, true));
 			if (mouse.clicking && this.prevMouseClicking == false) {//if they click
 				if (player.money >= this.shopInv.mouseOverObject.price) {
 					player.money -= this.shopInv.mouseOverObject.price;
@@ -415,6 +489,7 @@ class InventoryScene extends Scene {
 		this.prevMouseClicking = true;
 		this.exitButton = new ExitButton();
 		this.INV_SCALE = 3;
+		this.gui = new GUI();
 	}
 	update(realTime) {
 		FRAME.x = window.innerWidth / 2;
@@ -433,7 +508,6 @@ class InventoryScene extends Scene {
 		}
 		else if (player.weapon == null || player.inventory.objects[rightHandIndex].image != player.weapon.image) {
 			weapons.remove(player.weapon);
-			//player.dropRightHandItem();
 			var newImage = player.inventory.objects[rightHandIndex].image;
 			if (newImage == FRAME.getImage("shotgun")) {
 				player.changeWeapon(new Shotgun());
@@ -475,6 +549,15 @@ class InventoryScene extends Scene {
 			player.takeOffTorso();
 			player.putOnTorso(new Torso(0,0,player.inventory.objects[torsoIndex].image));
 		}
+		//item card
+		this.gui.update(realTime);
+		if (player.inventory.mouseOverObject != null) {//mousing over an item
+			if (this.gui.showingItemCard == false)
+				this.gui.showItemCard(new ItemCard(player.inventory.mouseOverObject, false));
+		}
+		else {
+			this.gui.hideItemCard();
+		}
 		
 		//exit button
 		if (mouse.clicking && this.prevMouseClicking == false) {
@@ -496,6 +579,9 @@ class InventoryScene extends Scene {
 		
 		player.inventory.draw();
 		this.exitButton.draw();
+		if (this.gui.showingItemCard) {
+			this.gui.itemCard.draw();
+		}
 	}
 	onLoad () {
 		floor = new FloorRect(400, 350);
@@ -519,6 +605,8 @@ class InventoryScene extends Scene {
 		this.prevMouseClicking = true;
 		this.exitButton = new ExitButton();
 		this.exitButton.update(0);
+		this.gui.reset();
+		this.gui.update(0);
 	}
 	onUnload() {
 		player.reset();

@@ -21,8 +21,8 @@ function main() {
 		else return -1;
 	});
 	
-	manager.update(timestep.realTime);
 	manager.render();
+	manager.update(timestep.realTime);
 	
 	requestFrame(main);
 }
