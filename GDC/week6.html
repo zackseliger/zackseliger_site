@@ -1,0 +1,25 @@
+<html>
+<head>
+	<link rel="stylesheet" type="text/css" href="../styles.css">
+	<link rel="stylesheet" href="http://cdn.jsdelivr.net/gh/highlightjs/cdn-release@9.12.0/build/styles/default.min.css">
+	<script src="http://cdn.jsdelivr.net/gh/highlightjs/cdn-release@9.12.0/build/highlight.min.js"></script>
+	<script>hljs.initHighlightingOnLoad();</script>
+	<title>Game Dev Club Week 6</title>
+</head>
+<body>
+	<h1>Week 6</h1>
+	<p>This week, we created a mouse class and learned how to handle the 'mousemove' event.  We created another rectangle and set it to follow the mouse.  We also learned how to draw text.</p>
+	
+	<h2>The Mouse 'class'</h2>
+	<pre><code class="javascript">Mouse = function() {&#10;&#9;var mouse = {};&#10;&#9;mouse.x = 0;&#10;&#9;mouse.y = 0;&#10;&#9;&#10;&#9;function move(e) {&#10;&#9;&#9;mouse.x = e.clientX;&#10;&#9;&#9;mouse.y = e.clientY;&#10;&#9;}&#10;&#9;canvas.addEventListener('mousemove', move);&#10;&#9;&#10;&#9;return mouse;&#10;}</code></pre>
+	<p>While Mouse() is actually a function, it also functions as a class.  Since it returns an object, we can instantiate a mouse object by calling the function.  Let's take a look at our use of the class<p>
+	
+	<h2>Using the Mouse class</h2>
+	<pre><code class="javascript">//setup&#10;var mouseRect = new Rectangle(200, 70, 30, 30);&#10;rectArray.push(mouseRect);&#10;mouse = new Mouse();&#10;//in main()&#10;mouseRect.x = mouse.x;&#10;mouseRect.y = mouse.y;</code></pre>
+	<p>We created another rectangle and added it to our rectArray so it can be updated and drawn, and created the mouse variable like we might instantiate any other class.  Additionally, in our main() function, we set the x and y values of our rectangle to the x and y of the mouse.</p>
+	
+	<h2>Text</h2>
+	<pre><code class="javascript">//in main()&#10;ctx.fillStyle = &#34;#F33&#34;;&#10;ctx.font = &#34;30px Arial&#34;;&#10;ctx.fillText(&#34;Hello World&#34;,10,200);</code></pre>
+	<p>The code for text is not very complicated.  ctx.font sets most parameters for our text, and ctx.fillText() actually draws it.  The function takes the string to draw, and the x and y values of the left-most point of the text.  <a href="https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/fillText">Here</a> is the MDN article to the fillText() function.  Another function I believe is worth looking at is the measureText() method, which can be found <a href="https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/measureText">here</a>.</p>
+</body>
+</html>
