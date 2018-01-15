@@ -1,6 +1,13 @@
 var GAME_WIDTH = 1200;
 var GAME_HEIGHT = 800;
 FRAME.init(GAME_WIDTH, GAME_HEIGHT, document.getElementById("canvas"));
+FRAME.playSound = function(name) {
+	if (FRAME.sounds.get(name).loop() == false && SFX_ENABLED.value == true) {
+		var id = -1;
+		id = FRAME.sounds.get(name).play();
+		return id;
+	}
+}
 
 var keyboard = new Keyboard();
 var mouse = new Mouse();
@@ -9,6 +16,10 @@ var timestep = new Timestep();
 var PIXEL_SIZE = 7;
 var TILE_SIZE = 75;
 var PLAYER_SPEED = 5;
+//options
+var randString = "jgMyEmZaDG";
+var SFX_ENABLED = {value:true};
+var EQUIP_BUYS = {value:true};
 
 //collision functions (we have a few)
 function checkSpecialCollision(obj1, obj2) {
@@ -96,6 +107,10 @@ function buildLevel(input) {
 		}
 		else if (param[0] == "f") {
 			floor = new FloorRect(parseFloat(param[1]), parseFloat(param[2]));
+			if (inEditor == true) {
+				document.getElementById("fw").value = floor.width;
+				document.getElementById("fh").value = floor.height;
+			}
 		}
 		else if (param[0] == "ce") {
 			characters.add(new ChaserEnemy(parseFloat(param[1]), parseFloat(param[2]), param[3]));
@@ -122,9 +137,10 @@ function randomLevel() {
 	
 	level += "p 0 0~";
 	level += "f 2000 2000";
+	var weapons = ["pw", "sw", "mgw", "gw", "mw"];
 	for (var i = 0; i < lines; i++) {
 		var rand = Math.random() * 100;
-		if (rand < 50) {
+		if (rand < 30) {
 			var randChar = Math.floor(Math.random() * 3 + 1);
 			var character = "";
 			if (randChar == 1) character = "ce";
@@ -132,12 +148,13 @@ function randomLevel() {
 			else if (randChar == 3) character = "re";
 			var xpos = Math.random() * 2000 - 1000;
 			var ypos = Math.random() * 2000 - 1000;
+			var weapon = weapons[Math.floor(Math.random() * weapons.length)];
 			while (Math.sqrt(Math.pow(xpos, 2) + Math.pow(ypos, 2)) < 500) {
 				xpos = Math.random() * 2000 - 1000;
 				ypos = Math.random() * 2000 - 1000;
 			}
 			
-			level += character + " " + Math.floor(xpos) + " " + Math.floor(ypos) + "~";
+			level += character + " " + Math.floor(xpos) + " " + Math.floor(ypos) + " " + weapon + "~";
 		}
 		else {
 			var xpos = Math.random() * 2000 - 1000;
@@ -146,7 +163,7 @@ function randomLevel() {
 				xpos = Math.random() * 2000 - 1000;
 				ypos = Math.random() * 2000 - 1000;
 			}
-			level += "t " + Math.floor(xpos) + " " + Math.floor(ypos) + " " + Math.floor(Math.random() * 500 + 25) + " " + Math.floor(Math.random() * 500 + 25) + "~";
+			level += "t " + Math.floor(xpos) + " " + Math.floor(ypos) + " " + Math.floor(Math.random() * 450 + 25) + " " + Math.floor(Math.random() * 450 + 25) + "~";
 		}
 	}
 
@@ -179,6 +196,74 @@ function weaponFromString(str) {
 	}
 	return weapon;
 }
+function weaponFromImage(img) {
+	var weapon = new EmptyGun();
+	if (img == FRAME.getImage("shotgun")) {
+		weapon = new Shotgun();
+	}
+	else if (img == FRAME.getImage("pistol")) {
+		weapon = new Gun()
+	}
+	else if (img == FRAME.getImage("machinegun")) {
+		weapon = new Machinegun()
+	}
+	else if (img == FRAME.getImage("launcher")) {
+		weapon = new GrenadeLauncher()
+	}
+	else if (img == FRAME.getImage("mine")) {
+		weapon = new Mine();
+	}
+	return weapon;
+}
+function copyToClipboard(text) {
+	var textArea = document.createElement("textarea");
+	textArea.style.position = 'fixed';
+	textArea.style.top = 0;
+	textArea.style.left = 0;
+	textArea.style.width = '2em';
+	textArea.style.height = '2em';
+	textArea.style.padding = 0;
+	textArea.style.border = 'none';
+	textArea.style.outline = 'none';
+	textArea.style.boxShadow = 'none';
+	textArea.style.background = 'transparent';
+	textArea.value = text;
+	document.body.appendChild(textArea);
+	textArea.select();
+	try {
+		var successful = document.execCommand('copy');
+		var msg = successful ? 'successful' : 'unsuccessful';
+	} catch (err) {}
+	document.body.removeChild(textArea);
+}
+function saveGame() {
+	var settings = {
+		money: player.money,
+		stage: player.stage,
+		inventoryObjects: player.inventory.getInv(),
+		shopObjects: manager.scenes.get("Shop").shopInv.getInv(),
+		sfxEnabled: SFX_ENABLED,
+		autoEquip: EQUIP_BUYS
+	}
+	var settingsString = window.btoa(JSON.stringify(settings));
+	localStorage.setItem(randString, settingsString);
+}
+function loadGame() {
+	var settings = localStorage.getItem(randString);
+	if (settings != null) {
+		try {
+			settings = JSON.parse(window.atob(settings));
+		} catch(err) {return;}
+		player.money = settings.money;
+		player.stage = settings.stage;
+		player.inventory.setInv(settings.inventoryObjects);
+		player.equipInv();
+		manager.scenes.get("Shop").shopInv.setInv(settings.shopObjects);
+		SFX_ENABLED = settings.sfxEnabled;
+		EQUIP_BUYS = settings.autoEquip;
+	}
+}
+
 
 ////////////////////////
 /////////EDITOR/////////
@@ -186,11 +271,11 @@ function weaponFromString(str) {
 function editLevel(level) {
 	buildLevel(level);
 	currentLevel = level;
-	manager.change("editor");
+	manager.change("Edit");
 }
 function editorBack() {
 	inEditor = false;
-	manager.change("menu");
+	manager.change("Menu");
 }
 function editorDelete() {
 	if (tiles.objects.indexOf(editorSelected) != -1) {
@@ -217,7 +302,7 @@ function editorAdd() {
 	else if (type == "gw") weapons.add(new GrenadeLauncher());
 	else if (type == "mw") weapons.add(new Mine());
 }
-function editorSave() {
+function editorSave(copy=true) {
 	var level = "";
 	level += "f " + floor.width + " " + floor.height + "~";
 	level += "p " + player.x + " " + player.y + "~";
@@ -237,15 +322,25 @@ function editorSave() {
 	}
 	
 	currentLevel = level;
+	if (copy == true) copyToClipboard(level);
 	return level;
 }
 function editorPlay() {
 	FRAME.resize();
 	buildLevel(editorSave());
-	manager.change("fight");
+	manager.change("Fight");
 }
 function editorRandomize() {
 	editLevel(randomLevel());
+}
+function editorLoad() {
+	var level = prompt("Please paste level code below:");
+	buildLevel(level);
+}
+function editorUpload() {
+	editorDisabled = true;
+	document.getElementById("editor-gui").style.visibility = "hidden";
+	document.getElementById("upload-gui").style.visibility = "visible";
 }
 
 ////////////////////////
@@ -275,10 +370,15 @@ FRAME.loadImage("assets/img/torso/forest.png", "forestTorso");
 FRAME.loadImage("assets/img/torso/sash.png", "sash");
 FRAME.loadImage("assets/img/torso/chainmail.png", "chainmailTorso");
 
+FRAME.loadImage("assets/img/door.png", "door");
+FRAME.loadImage("assets/img/doorFight.png", "doorFight");
+FRAME.loadImage("assets/img/doorShop.png", "doorShop");
+FRAME.loadImage("assets/img/doorCustomize.png", "doorCustomize");
+FRAME.loadImage("assets/img/doorEdit.png", "doorEdit");
+FRAME.loadImage("assets/img/doorSettings.png", "doorSettings");
 FRAME.loadImage("assets/img/smoke1.png", "smoke1");
 FRAME.loadImage("assets/img/smoke2.png", "smoke2");
 FRAME.loadImage("assets/img/coin.png", "coin");
-FRAME.loadImage("assets/img/door.png", "door");
 FRAME.loadImage("assets/img/tile.png", "tile");
 
 ////////////////////////

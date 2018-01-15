@@ -9,6 +9,7 @@
         background-color: #222;
       }
 	  #main-editor-gui {
+	    text-align: center;
 		line-height: 0px;
 		padding: 10px;
 		background-color: #FFF;
@@ -23,9 +24,32 @@
 	  #main-editor-gui p {
 		margin-top: 0;
 	  }
-	  input {
+	  #upload-gui {
+	    line-height: 0px;
+		padding: 10px;
+	    visibility: hidden;
+		background-color: #FFF;
+		position: fixed;
+		width: 600px;
+		height: 300px;
+		left: 50%;
+		top: 50%;
+		transform: translate(-50%, -50%);
+	  }
+	  input, textarea {
+	    outline: none;
+	    border: 1px solid black;
+	  }
+	  textarea {
+	    resize: none;
+	  }
+	  #editor-gui input {
 		margin: 5px 10px;
 		width: 75px;
+	  }
+	  #upload-gui input {
+	    margin: 5px 10px;
+		width: 150px;
 	  }
     </style>
   </head>
@@ -42,13 +66,29 @@
 		<p>floor w:<input id="fw"/>
 		floor h:<input id="fh"/>
 		<button id="play" onclick="editorPlay()">play</button>
-		<button id="clear" onclick="console.log(editorSave())">save</button></p>
+		<button id="clear" onclick="console.log(editorSave())">save</button>
+		<button id="load" onclick="editorLoad()">load</button></p>
 		<p>add type: <input id="type"/>
 		<button id="add" onclick="editorAdd()">add</button>
-		<button id="del" onclick="editorDelete()">delete selected</button>
-		<button id="back" onclick="editorBack()">exit editor</button>
-		<button id="save" onclick="editorRandomize()">rand</button></p>
+		<button id="del" onclick="editorDelete()">delete</button>
+		<button id="back" onclick="editorBack()">exit</button>
+		<button id="save" onclick="editorRandomize()">random</button>
+		<button id="upload" onclick="editorUpload()">upload</button></p>
 	</div>
+	</div>
+	<div id="upload-gui">
+		<p style="text-align: center; margin-bottom: 5px">Upload</p>
+		<form>
+			<p style="text-align: center">Level Name<input name="n"/></p>
+			<div style="float: left">
+				<p>Level code:</p>
+				<p><textarea rows="10" cols="38" id="level-code" name="c"></textarea></p>
+			</div>
+			<div style="float: right">
+				<p>Description:</p>
+				<p><textarea rows="10" cols="38" name="d"></textarea></p>
+			</div>
+		</form>
 	</div>
 	
     <script src="js/loader.js"></script>

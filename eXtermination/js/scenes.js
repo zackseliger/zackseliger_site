@@ -8,11 +8,11 @@ class SceneManager {
 		this.scenes.set(name, scene);
 	}
 	change(name) {
-		if (this.scenes.get(this.currentScene) != undefined) {
-			this.scenes.get(this.currentScene).onUnload();
-		}
 		this.prevScene = this.currentScene;
 		this.currentScene = name;
+		if (this.scenes.get(this.prevScene) != undefined) {
+			this.scenes.get(this.prevScene).onUnload();
+		}
 		this.scenes.get(this.currentScene).onLoad();
 	}
 	update(realTime) {
@@ -37,13 +37,17 @@ class MenuScene extends Scene {
 	constructor(manager) {
 		super(manager);
 		
-		this.messages = ["Fight", "Shop", "Customize", "Edit"];
+		this.titleText = new Text(0, -350, "Extermination", "Arial", "#FFF", 100, "center");
+		this.messages = ["Fight", "Shop", "Customize", "Settings", "Edit"];
 		this.numDoors = this.messages.length;
 		
 		this.doors = new Collection();
 		this.texts = [];
 		for (var i = 0; i < this.numDoors; i++) {
-			this.doors.add(new ImageActor(i * 100 - (50 * (this.numDoors - 1)), 75, FRAME.getImage("door"), PIXEL_SIZE + 2));
+			var imgName = "door" + this.messages[i];
+			if (FRAME.getImage(imgName) == undefined) imgName = "door";
+			
+			this.doors.add(new ImageActor(i * 100 - (50 * (this.numDoors - 1)), 75, FRAME.getImage(imgName), PIXEL_SIZE + 2));
 			this.texts.push(new Text(0, -225, this.messages[i], "Arial", "#FFF", 52, "center"));
 		}
 		this.selectedDoorIndex = -1;
@@ -81,18 +85,7 @@ class MenuScene extends Scene {
 		
 		//mouse click
 		if (mouse.clicking && this.selectedDoorIndex != -1) {
-			if (this.texts[this.selectedDoorIndex].text == "Fight") {
-				this.manager.change("fight");
-			}
-			else if (this.texts[this.selectedDoorIndex].text == "Edit") {
-				editLevel("f 1000 800~p 0 0");
-			}
-			else if (this.texts[this.selectedDoorIndex].text == "Shop") {
-				this.manager.change("shop");
-			}
-			else if (this.texts[this.selectedDoorIndex].text == "Customize") {
-				this.manager.change("inventory");
-			}
+			this.manager.change(this.texts[this.selectedDoorIndex].text);
 			FRAME.playSound("changeScene");
 		}
 	}
@@ -105,6 +98,7 @@ class MenuScene extends Scene {
 		this.moneyImage.draw();
 		this.moneyText.draw();
 		this.stageText.draw();
+		this.titleText.draw();
 	}
 	onLoad() {
 		characters.clear();
@@ -127,6 +121,12 @@ class MenuScene extends Scene {
 		for (var i = 0; i < this.doors.objects.length; i++) {
 			this.doors.objects[i].width = this.doors.objects[i].image.width * (PIXEL_SIZE+2);
 			this.doors.objects[i].height = this.doors.objects[i].image.height * (PIXEL_SIZE+2);
+		}
+	}
+	onUnload() {
+		if (this.manager.currentScene == "Edit") {
+			currentLevel = "f 1000 800~p 0 0";
+			buildLevel(currentLevel);
 		}
 	}
 }
@@ -180,7 +180,7 @@ class FightScene extends Scene {
 			if (this.gui.doneShowingEndScreen) {
 				if (inEditor == false) {
 					if (player.dead == false) player.stage += 1;
-					this.manager.change("menu");
+					this.manager.change("Menu");
 				}
 				else {
 					editLevel(currentLevel);
@@ -220,6 +220,7 @@ class FightScene extends Scene {
 	}
 	onUnload() {
 		if (inEditor == true) player.money = this.editorMoney;
+		else saveGame();
 	}
 }
 
@@ -235,136 +236,138 @@ class EditorScene extends Scene {
 		this.gui = new editorGUI();
 	}
 	update(realTime) {
-		//guns in hands
-		for (var i = 0; i < characters.objects.length; i++) {
-			if (characters.objects[i].inRightHand != null) {
-				characters.objects[i].putInRightHand(characters.objects[i].inRightHand);
-			}
-		}
-		
-		//select a thing
-		if (mouse.clicking && this.prevMouseClicking == false) {
-			this.selected = null;
-			for (var i = 0; i < tiles.objects.length; i++) {
-				if (checkCollision(mouse, tiles.objects[i])) {
-					this.selected = tiles.objects[i];
-					this.looseSelected = tiles.objects[i];
-					break;
-				}
-			}
+		if (editorDisabled == false) {
+			//guns in hands
 			for (var i = 0; i < characters.objects.length; i++) {
-				if (checkCollision(mouse, characters.objects[i])) {
-					this.selected = characters.objects[i];
-					this.looseSelected = characters.objects[i];
-					break;
-				}
-			}
-			for (var i = 0; i < weapons.objects.length; i++) {
-				if (weapons.objects[i].owner == null && checkGunCollision(mouse, weapons.objects[i])) {
-					this.selected = weapons.objects[i];
-					this.looseSelected = weapons.objects[i];
-					break;
+				if (characters.objects[i].inRightHand != null) {
+					characters.objects[i].putInRightHand(characters.objects[i].inRightHand);
 				}
 			}
 			
-			//drag-n-drop
-			if (this.gui.getSelectedObject() != null) {
-				var selectedImage = this.gui.getSelectedObject().image;
-				var newObj = null;
-				if (selectedImage == FRAME.getImage("chaserEnemyWalk1")) {
-					newObj = new ChaserEnemy();
+			//select a thing
+			if (mouse.clicking && this.prevMouseClicking == false) {
+				this.selected = null;
+				for (var i = 0; i < tiles.objects.length; i++) {
+					if (checkCollision(mouse, tiles.objects[i])) {
+						this.selected = tiles.objects[i];
+						this.looseSelected = tiles.objects[i];
+						break;
+					}
 				}
-				else if (selectedImage == FRAME.getImage("proximityEnemyWalk1")) {
-					newObj = new ProximityEnemy();
+				for (var i = 0; i < characters.objects.length; i++) {
+					if (checkCollision(mouse, characters.objects[i])) {
+						this.selected = characters.objects[i];
+						this.looseSelected = characters.objects[i];
+						break;
+					}
 				}
-				else if (selectedImage == FRAME.getImage("randomEnemyWalk1")) {
-					newObj = new RandomEnemy();
+				for (var i = 0; i < weapons.objects.length; i++) {
+					if (weapons.objects[i].owner == null && checkGunCollision(mouse, weapons.objects[i])) {
+						this.selected = weapons.objects[i];
+						this.looseSelected = weapons.objects[i];
+						break;
+					}
 				}
-				else if (selectedImage == FRAME.getImage("tile")) {
-					newObj = new Tile(0,0,50,50);
+				
+				//drag-n-drop
+				if (this.gui.getSelectedObject() != null) {
+					var selectedImage = this.gui.getSelectedObject().image;
+					var newObj = null;
+					if (selectedImage == FRAME.getImage("chaserEnemyWalk1")) {
+						newObj = new ChaserEnemy();
+					}
+					else if (selectedImage == FRAME.getImage("proximityEnemyWalk1")) {
+						newObj = new ProximityEnemy();
+					}
+					else if (selectedImage == FRAME.getImage("randomEnemyWalk1")) {
+						newObj = new RandomEnemy();
+					}
+					else if (selectedImage == FRAME.getImage("tile")) {
+						newObj = new Tile(0,0,50,50);
+					}
+					else if (selectedImage == FRAME.getImage("pistol")) {
+						newObj = new Gun();
+					}
+					else if (selectedImage == FRAME.getImage("shotgun")) {
+						newObj = new Shotgun();
+					}
+					else if (selectedImage == FRAME.getImage("machinegun")) {
+						newObj = new Machinegun();
+					}
+					else if (selectedImage == FRAME.getImage("launcher")) {
+						newObj = new GrenadeLauncher();
+					}
+					else if (selectedImage == FRAME.getImage("mine")) {
+						newObj = new Mine();
+					}
+					newObj.x = mouse.x;
+					newObj.y = mouse.y;
+					if (newObj.walkStrip != undefined) {
+						characters.add(newObj);
+					}
+					else if (newObj.solid != undefined) {
+						tiles.add(newObj);
+					}
+					this.selected = newObj;
+					this.looseSelected = newObj;
 				}
-				else if (selectedImage == FRAME.getImage("pistol")) {
-					newObj = new Gun();
+				
+				editorSelected = this.looseSelected;
+				if (this.selected != null) {
+					document.getElementById("x").value = this.selected.x;
+					document.getElementById("y").value = this.selected.y;
+					document.getElementById("w").value = this.selected.width;
+					document.getElementById("h").value = this.selected.height;
 				}
-				else if (selectedImage == FRAME.getImage("shotgun")) {
-					newObj = new Shotgun();
+			}
+			//moving selected thing
+			if (mouse.clicking && this.selected !== null) {
+				if (mouse.xVel !== 0) this.selected.x += mouse.xVel;
+				if (mouse.yVel !== 0) this.selected.y += mouse.yVel;
+				document.getElementById("x").value = Math.floor(this.selected.x);
+				document.getElementById("y").value = Math.floor(this.selected.y);
+			}
+			//swapping guns n stuff
+			if (this.prevMouseClicking == true && mouse.clicking == false && weapons.objects.indexOf(this.selected) != -1) {
+				for (var i = 0; i < characters.objects.length; i++) {
+					if (checkGunCollision(characters.objects[i], this.selected) && characters.objects[i] != player) {
+						var dropped = characters.objects[i].inRightHand;
+						characters.objects[i].dropRightHandItem();
+						characters.objects[i].putInRightHand(this.selected);
+						dropped.y = parseInt(characters.objects[i].y + characters.objects[i].height/2);
+						dropped.x = parseInt(characters.objects[i].x);
+						this.selected = null;
+						this.looseSelected = null;
+						break;
+					}
 				}
-				else if (selectedImage == FRAME.getImage("machinegun")) {
-					newObj = new Machinegun();
-				}
-				else if (selectedImage == FRAME.getImage("launcher")) {
-					newObj = new GrenadeLauncher();
-				}
-				else if (selectedImage == FRAME.getImage("mine")) {
-					newObj = new Mine();
-				}
-				newObj.x = mouse.x;
-				newObj.y = mouse.y;
-				if (newObj.walkStrip != undefined) {
-					characters.add(newObj);
-				}
-				else if (newObj.solid != undefined) {
-					tiles.add(newObj);
-				}
-				this.selected = newObj;
-				this.looseSelected = newObj;
+			}
+			this.prevMouseClicking = mouse.clicking;
+			
+			//changing things via keyboard
+			if (this.looseSelected != null && mouse.clicking == false) {
+				this.looseSelected.x = parseFloat(document.getElementById("x").value);
+				this.looseSelected.y = parseFloat(document.getElementById("y").value);
+				this.looseSelected.width = parseFloat(document.getElementById("w").value);
+				this.looseSelected.height = parseFloat(document.getElementById("h").value);
+			}
+			if (mouse.clicking == false) {
+				floor.width = document.getElementById("fw").value;
+				floor.height = document.getElementById("fh").value;
 			}
 			
-			editorSelected = this.looseSelected;
-			if (this.selected != null) {
-				document.getElementById("x").value = this.selected.x;
-				document.getElementById("y").value = this.selected.y;
-				document.getElementById("w").value = this.selected.width;
-				document.getElementById("h").value = this.selected.height;
-			}
+			//keyboard input
+			if (keyboard[37] || keyboard[65]) FRAME.x += this.CAM_SPEED;
+			if (keyboard[38] || keyboard[87]) FRAME.y += this.CAM_SPEED;
+			if (keyboard[39] || keyboard[68]) FRAME.x -= this.CAM_SPEED;
+			if (keyboard[40] || keyboard[83]) FRAME.y -= this.CAM_SPEED;
+			if (keyboard[81]) FRAME.scaleX = FRAME.scaleY = FRAME.scaleX - 0.01;
+			if (keyboard[69]) FRAME.scaleX = FRAME.scaleY = FRAME.scaleX + 0.01;
+			if (mouse.deltaY > 0) FRAME.scaleX = FRAME.scaleY = FRAME.scaleX - 0.1;
+			if (mouse.deltaY < 0) FRAME.scaleX = FRAME.scaleY = FRAME.scaleX + 0.1
+			if (keyboard[46]) editorDelete();
+			if (keyboard[13]) editorAdd();
 		}
-		//moving selected thing
-		if (mouse.clicking && this.selected !== null) {
-			if (mouse.xVel !== 0) this.selected.x += mouse.xVel;
-			if (mouse.yVel !== 0) this.selected.y += mouse.yVel;
-			document.getElementById("x").value = Math.floor(this.selected.x);
-			document.getElementById("y").value = Math.floor(this.selected.y);
-		}
-		//swapping guns n stuff
-		if (this.prevMouseClicking == true && mouse.clicking == false && weapons.objects.indexOf(this.selected) != -1) {
-			for (var i = 0; i < characters.objects.length; i++) {
-				if (checkGunCollision(characters.objects[i], this.selected) && characters.objects[i] != player) {
-					var dropped = characters.objects[i].inRightHand;
-					characters.objects[i].dropRightHandItem();
-					characters.objects[i].putInRightHand(this.selected);
-					dropped.y = parseInt(characters.objects[i].y + characters.objects[i].height/2);
-					dropped.x = parseInt(characters.objects[i].x);
-					this.selected = null;
-					this.looseSelected = null;
-					break;
-				}
-			}
-		}
-		this.prevMouseClicking = mouse.clicking;
-		
-		//changing things via keyboard
-		if (this.looseSelected != null && mouse.clicking == false) {
-			this.looseSelected.x = parseFloat(document.getElementById("x").value);
-			this.looseSelected.y = parseFloat(document.getElementById("y").value);
-			this.looseSelected.width = parseFloat(document.getElementById("w").value);
-			this.looseSelected.height = parseFloat(document.getElementById("h").value);
-		}
-		if (mouse.clicking == false) {
-			floor.width = document.getElementById("fw").value;
-			floor.height = document.getElementById("fh").value;
-		}
-		
-		//keyboard input
-		if (keyboard[37] || keyboard[65]) FRAME.x += this.CAM_SPEED;
-		if (keyboard[38] || keyboard[87]) FRAME.y += this.CAM_SPEED;
-		if (keyboard[39] || keyboard[68]) FRAME.x -= this.CAM_SPEED;
-		if (keyboard[40] || keyboard[83]) FRAME.y -= this.CAM_SPEED;
-		if (keyboard[81]) FRAME.scaleX = FRAME.scaleY = FRAME.scaleX - 0.01;
-		if (keyboard[69]) FRAME.scaleX = FRAME.scaleY = FRAME.scaleX + 0.01;
-		if (mouse.deltaY > 0) FRAME.scaleX = FRAME.scaleY = FRAME.scaleX - 0.1;
-		if (mouse.deltaY < 0) FRAME.scaleX = FRAME.scaleY = FRAME.scaleX + 0.1
-		if (keyboard[46]) editorDelete();
-		if (keyboard[13]) editorAdd();
 		//zoom fix
 		if (FRAME.scaleX < 0.1) FRAME.scaleX = FRAME.scaleY = 0.1;
 		
@@ -378,7 +381,9 @@ class EditorScene extends Scene {
 		tiles.draw();
 		characters.draw();
 		weapons.draw();
-		this.gui.draw();
+		if (editorDisabled == false) {
+			this.gui.draw();
+		}
 	}
 	onLoad() {
 		player.reset();
@@ -436,7 +441,27 @@ class ShopScene extends Scene {
 				if (player.money >= this.shopInv.mouseOverObject.price) {
 					player.money -= this.shopInv.mouseOverObject.price;
 					particles.add(new BuyItemParticle(this.shopInv.mouseOverObject.x, this.shopInv.mouseOverObject.y));
-					player.inventory.addItem(this.shopInv.mouseOverObject);
+					if (EQUIP_BUYS.value == true) {
+						var indexToAdd = -1;
+						if (this.shopInv.mouseOverObject.type == "torso") {
+							if (player.torso != null) player.takeOffTorso(player.torso);
+							player.putOnTorso(new Torso(0,0,this.shopInv.mouseOverObject.image));
+							indexToAdd = player.inventory.collection.objects.indexOf(player.torsoSquare);
+						}
+						else if (this.shopInv.mouseOverObject.type == "helmet") {
+							if (player.helmet != null) player.takeOffHelmet(player.helmet);
+							player.putOnHead(new Helmet(0,0,this.shopInv.mouseOverObject.image));
+							indexToAdd = player.inventory.collection.objects.indexOf(player.helmetSquare);
+						}
+						else if (this.shopInv.mouseOverObject.type == "weapon") {
+							player.changeWeapon(weaponFromImage(this.shopInv.mouseOverObject.image));
+							indexToAdd = player.inventory.collection.objects.indexOf(player.rightHandSquare);
+						}
+						player.inventory.addItemAtIndex(this.shopInv.mouseOverObject, indexToAdd);
+					}
+					else {
+						player.inventory.addItem(this.shopInv.mouseOverObject);
+					}
 					this.shopInv.removeItem(this.shopInv.mouseOverObject);
 					FRAME.playSound("buy");
 				}
@@ -452,7 +477,7 @@ class ShopScene extends Scene {
 		//exit button
 		if (mouse.clicking && this.prevMouseClicking == false) {
 			if (this.exitButton.mouseOver) {
-				this.manager.change("menu");
+				this.manager.change("Menu");
 				FRAME.playSound("changeScene");
 			}
 		}
@@ -476,6 +501,9 @@ class ShopScene extends Scene {
 		this.gui.update(0);
 		this.exitButton = new ExitButton();
 		this.exitButton.update(0);
+	}
+	onUnload() {
+		saveGame();
 	}
 }
 
@@ -509,25 +537,7 @@ class InventoryScene extends Scene {
 		else if (player.weapon == null || player.inventory.objects[rightHandIndex].image != player.weapon.image) {
 			weapons.remove(player.weapon);
 			var newImage = player.inventory.objects[rightHandIndex].image;
-			if (newImage == FRAME.getImage("shotgun")) {
-				player.changeWeapon(new Shotgun());
-			}
-			else if (newImage == FRAME.getImage("pistol")) {
-				player.changeWeapon(new Gun());
-			}
-			else if (newImage == FRAME.getImage("machinegun")) {
-				player.changeWeapon(new Machinegun());
-			}
-			else if (newImage == FRAME.getImage("launcher")) {
-				player.changeWeapon(new GrenadeLauncher());
-			}
-			else if (newImage == FRAME.getImage("mine")) {
-				player.changeWeapon(new Mine());
-			}
-			else {
-				player.changeWeapon(new Gun(0,0,newImage));
-			}
-			player.setScale(this.INV_SCALE);
+			player.changeWeapon(weaponFromImage(newImage));
 		}
 		if (player.inventory.objects[helmetIndex] == null && player.helmet != null) {
 			player.takeOffHelmet();
@@ -562,7 +572,7 @@ class InventoryScene extends Scene {
 		//exit button
 		if (mouse.clicking && this.prevMouseClicking == false) {
 			if (this.exitButton.mouseOver) {
-				this.manager.change("menu");
+				this.manager.change("Menu");
 				FRAME.playSound("changeScene");
 			}
 		}
@@ -610,5 +620,51 @@ class InventoryScene extends Scene {
 	}
 	onUnload() {
 		player.reset();
+	}
+	onUnload() {
+		saveGame();
+	}
+}
+
+class SettingsScene extends Scene {
+	constructor(manager) {
+		super(manager);
+		
+		this.titleText = new Text(0, -400, "Settings", "Arial", "#FFF", 100, "center");
+		this.exitButton = new ExitButton();
+		this.prevMouseClicking = true;
+		this.options = new Collection();
+		this.options.add(new Option(SFX_ENABLED, "Play sound effects:", 0));
+		this.options.add(new Option(EQUIP_BUYS, "Automatically equip purchases:", 200));
+	}
+	update(realTime) {
+		FRAME.x = window.innerWidth / 2;
+		FRAME.y = window.innerHeight / 2;
+		
+		this.options.update(realTime);
+		
+		//exit button
+		this.exitButton.update(realTime);
+		if (mouse.clicking && this.prevMouseClicking == false) {
+			if (this.exitButton.mouseOver) {
+				this.manager.change("Menu");
+				FRAME.playSound("changeScene");
+			}
+		}
+		
+		this.prevMouseClicking = mouse.clicking;
+	}
+	render() {
+		this.titleText.draw();
+		this.exitButton.draw();
+		this.options.draw();
+	}
+	onLoad() {
+		this.exitButton = new ExitButton();
+		this.exitButton.update(0);
+		this.prevMouseClicking = true;
+	}
+	onUnload() {
+		saveGame();
 	}
 }

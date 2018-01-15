@@ -297,11 +297,14 @@ class Mine extends Gun {
 	fireRound() {
 		var id = FRAME.playSound("mineDrop");
 		var vol = 90/distBetween(this, player);
+		var rot = this.rotation;
+		if (Math.abs(rot) > Math.PI/2) rot += Math.PI;
+		
 		if (Math.abs(this.rotation) < Math.PI / 2) {
-			new MineBullet(this.x + 1.5*PIXEL_SIZE*Math.sin(this.rotation), this.y - 1.5*PIXEL_SIZE*Math.cos(this.rotation), Math.PI % this.rotation, this.owner);
+			new MineBullet(this.x + 1.5*PIXEL_SIZE*Math.sin(this.rotation), this.y - 1.5*PIXEL_SIZE*Math.cos(this.rotation), rot, this.owner);
 		}
 		else {
-			new MineBullet(this.x - 1.5*PIXEL_SIZE*Math.sin(this.rotation), this.y + 1.5*PIXEL_SIZE*Math.cos(this.rotation), Math.PI % this.rotation, this.owner);
+			new MineBullet(this.x - 1.5*PIXEL_SIZE*Math.sin(this.rotation), this.y + 1.5*PIXEL_SIZE*Math.cos(this.rotation), rot, this.owner);
 		}
 	}
 }
@@ -391,7 +394,7 @@ class Timer extends Actor {
 		this.color = col || "#FFF";
 		this.radius = r || 10;
 		this.fullTime = t || 1.0;
-		this.time = t || 1.0;
+		this.time = t || 0.0;
 		this.done = false;
 	}
 	update(realTime) {
@@ -895,10 +898,14 @@ class Inventory extends Actor {
 		}
 		return false;
 	}
-	addItemAtIndex(item, index) {
+	addItemAtIndex(item, index, replace=false) {
+		var oldObj = this.objects[index];
 		this.objects[index] = item;
-		item.x = this.collection.objects[index].x;
-		item.y = this.collection.objects[index].y;
+		if (item != null) {
+			item.x = this.collection.objects[index].x;
+			item.y = this.collection.objects[index].y;
+		}
+		if (oldObj != null && replace == false) this.addItem(oldObj);
 	}
 	getItemAtIndex(index) {
 		return this.objects[index];
@@ -911,6 +918,31 @@ class Inventory extends Actor {
 		var index = this.objects.indexOf(item);
 		if (index != -1) {
 			this.objects[index] = null;
+		}
+	}
+	getInv() {
+		var objs = [];
+		for (var i = 0; i < this.objects.length; i++) {
+			if (this.objects[i] == null) objs[i] = null;
+			else {
+				objs[i] = {};
+				objs[i].image = {};
+				objs[i].image.key = this.objects[i].image.key;
+				objs[i].type = this.objects[i].type;
+				objs[i].name = this.objects[i].name;
+				objs[i].price = this.objects[i].price;
+			}
+		}
+		return objs;
+	}
+	setInv(objs) {
+		for (var i = 0; i < objs.length; i++) {
+			if (objs[i] != null) {
+				this.addItemAtIndex(new TileItem(FRAME.getImage(objs[i].image.key), objs[i].type, objs[i].name, objs[i].price), i, true);
+			}
+			else {
+				this.addItemAtIndex(null, i, true);
+			}
 		}
 	}
 }
@@ -1007,6 +1039,84 @@ class ExitButton extends Actor {
 		this.ctx.stroke();
 		this.ctx.closePath();
 		this.ctx.lineCap = 'butt';
+	}
+}
+
+class OptionRect extends Actor {
+	constructor(x, y, option) {
+		super(x, y);
+		this.option = option;
+		this.realWidth = 100;
+		this.realHeight = 50;
+		this.realFontSize = 32;
+		this.textY = -22;
+		this.width = this.realWidth;
+		this.height = this.realHeight;
+		this.text = new Text(0, this.textY, "yes", "Arial", "#222", this.realFontSize, "center");
+		if (this.option.value == false) this.text.text = "no";
+		this.prevMouseClicking = false;
+	}
+	update(realTime) {
+		if (checkCollision(this, mouse)) {
+			if (mouse.clicking == false) {
+				this.width += (this.realWidth*1.2 - this.width) * 0.2;
+				this.height += (this.realHeight*1.2 - this.height) * 0.2;
+				this.text.fontsize = (parseInt(this.text.fontsize) + (this.realFontSize*1.2 - this.text.fontsize) * 0.2).toString();
+				this.text.y += (this.textY*1.2 - this.text.y) * 0.2;
+			}
+			else {
+				this.width += (this.realWidth*1.4 - this.width) * 0.2;
+				this.height += (this.realHeight*1.4 - this.height) * 0.2;
+				this.text.fontsize = (parseInt(this.text.fontsize) + (this.realFontSize*1.4 - this.text.fontsize) * 0.2).toString();
+				this.text.y += (this.textY*1.4 - this.text.y) * 0.2;
+			}
+			
+			if (this.prevMouseClicking == false && mouse.clicking == true) {
+				FRAME.playSound("select");
+			}
+			if (this.prevMouseClicking == true && mouse.clicking == false) {
+				FRAME.playSound("select");
+				if (this.option.value == true) {
+					this.option.value = false;
+					this.text.text = "no";
+				}
+				else {
+					this.option.value = true;
+					this.text.text = "yes";
+				}
+			}
+		}
+		else {
+			this.width += (this.realWidth - this.width) * 0.2;
+			this.height += (this.realHeight - this.height) * 0.2;
+			this.text.fontsize = (parseInt(this.text.fontsize) + (this.realFontSize - this.text.fontsize) * 0.2).toString();
+			this.text.y += (this.textY - this.text.y) * 0.2;
+		}
+		
+		this.prevMouseClicking = mouse.clicking;
+	}
+	render() {
+		if (this.option.value == true) this.ctx.fillStyle = "#66EE99";
+		else this.ctx.fillStyle = "#EE4444";
+		this.ctx.fillRect(-this.width/2, -this.height/2, this.width, this.height);
+		this.text.draw();
+	}
+}
+
+class Option extends Actor {
+	constructor(option, text, y=0) {
+		super(0, 0);
+		
+		this.option = option;
+		this.text = new Text(-GAME_WIDTH/2 + 25, y-45, text, "Arial", "#FFF", 64, "left");
+		this.rect = new OptionRect(500, y, this.option);
+	}
+	update(realTime) {
+		this.rect.update(realTime);
+	}
+	draw() {
+		this.text.draw();
+		this.rect.draw();
 	}
 }
 

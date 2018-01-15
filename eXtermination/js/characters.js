@@ -10,7 +10,7 @@ class Character extends Actor {
 		this.moveYAccum = 0;
 		this.walkStrip = new ImageStrip();
 		this.type = "c";
-		this.shotTimer = new Timer(40, -40, 1);
+		this.shotTimer = new Timer(40, -40);
 		
 		//equip/visual stuff
 		this.image = null;
@@ -140,7 +140,7 @@ class Character extends Actor {
 		this.ctx.drawImage(this.image, -this.width / 2, -this.height / 2, this.width, this.height);
 		if (this.helmet != null) this.helmet.draw();
 		if (this.torso != null) this.torso.draw();
-		if (manager.currentScene == "fight") this.shotTimer.draw();
+		if (manager.currentScene == "Fight") this.shotTimer.draw();
 		if (this.facingRight == false) this.ctx.scale(-1, 1);
 	}
 	putInRightHand(obj) {
@@ -298,6 +298,21 @@ class Player extends Character {
 		this.dead = false;
 		this.putInRightHand(this.weapon);
 		if (this.weapon != null) this.weapon.rotation = 0;
+	}
+	equipInv() {
+		var rightHandIndex = player.inventory.collection.objects.indexOf(player.rightHandSquare);
+		var helmetIndex = player.inventory.collection.objects.indexOf(player.helmetSquare);
+		var torsoIndex = player.inventory.collection.objects.indexOf(player.torsoSquare);
+		
+		if (this.inventory.objects[helmetIndex] != null) {
+			player.putOnHead(new Helmet(0,0,this.inventory.objects[helmetIndex].image));
+		}
+		if (this.inventory.objects[torsoIndex] != null) {
+			player.putOnTorso(new Torso(0,0,this.inventory.objects[torsoIndex].image));
+		}
+		if (this.inventory.objects[rightHandIndex] != null) {
+			player.changeWeapon(weaponFromImage(this.inventory.objects[rightHandIndex].image));
+		}
 	}
 }
 

@@ -49,6 +49,7 @@ FRAME.clearScreen = function() {
 FRAME.loadImage = function(path, name) {
 	var img = new Image();
 	img.src = path;
+	img.key = name;
 	FRAME.images.set(name, img);
 }
 FRAME.getImage = function(name) {
@@ -65,9 +66,7 @@ FRAME.loadSound = function(path, name, loop, vol) {
 }
 FRAME.playSound = function(name) {
 	var id = -1;
-	if (FRAME.sounds.get(name).loop() == false || FRAME.sounds.get(name).loop() == true && PLAY_MUSIC == true) {
-		id = FRAME.sounds.get(name).play();
-	}
+	id = FRAME.sounds.get(name).play();
 	return id;
 }
 FRAME.stopSound = function(name) {
