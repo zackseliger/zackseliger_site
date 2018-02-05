@@ -17,6 +17,7 @@ FRAME.resize = function() {
 	FRAME.canvas.height = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight;
 	
 	FRAME.ctx.imageSmoothingEnabled = FRAME.smoothing;
+	FRAME.ctx.imageSmoothingQuality = "high";
 }
 FRAME.init = function(w, h, canvas) {
 	FRAME.game_width = w;
