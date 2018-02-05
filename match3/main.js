@@ -29,14 +29,14 @@ class EmptyVisual extends GameObj {
 class Tile extends Actor {
 	constructor(x,y,type=-1) {
 		super(x, y);
+		this.alpha = 1.0;
 		this.type = type;
-		this.color = "#000";
 		this.moused = false;
 		this.image = FRAME.getImage("tile" + (this.type+1));
 		this.normalHeight = TILE_SIZE;
 		this.normalWidth = TILE_SIZE;
-		this.width = 0;
-		this.height = 0;
+		this.width = this.normalWidth;
+		this.height = this.normalHeight;
 		this.xOffset = 0;
 		this.yOffset = 0;
 	}
@@ -53,7 +53,10 @@ class Tile extends Actor {
 		}
 	}
 	render() {
+		if (this.type < 0) return;
+		this.ctx.globalAlpha = this.alpha;
 		this.ctx.drawImage(this.image, -this.width/2+this.xOffset, -this.height/2+this.yOffset, this.width, this.height);
+		this.ctx.globalAlpha = 1.0;
 	}
 	offset(x,y) {
 		this.xOffset = x;
@@ -190,6 +193,12 @@ window.onload = function() {
 function main() {
 	FRAME.clearScreen();
 	mouse.update();
+	
+	for (var i = 0; i < network.objects.length; i++) {
+		if (network.me.id != -1 && network.objects[i].id != network.me.id) {
+			mainCollection.remove(network.objects[i].grid);
+		}
+	}
 	
 	//update/draw things and camera
 	mainCollection.update(0);
