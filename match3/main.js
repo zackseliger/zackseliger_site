@@ -39,6 +39,8 @@ class Tile extends Actor {
 		this.height = this.normalHeight;
 		this.xOffset = 0;
 		this.yOffset = 0;
+		this.targetX = x;
+		this.targetY = y;
 	}
 	update() {
 		if (checkCollision(mouse, this)) {
@@ -51,6 +53,8 @@ class Tile extends Actor {
 			this.width += (this.normalWidth - this.width) * 0.1;
 			this.height += (this.normalHeight - this.height) * 0.1;
 		}
+		this.x += (this.targetX - this.x) * 0.1;
+		this.y += (this.targetY - this.y) * 0.1;
 	}
 	render() {
 		if (this.type < 0) return;
@@ -138,7 +142,11 @@ class Grid extends Actor {
 		for (var x = 0; x < this.cols; x++) {
 			for (var y = 0; y < this.rows; y++) {
 				if (this.tiles[x][y].type != tiles[x][y].type) {
-					this.addTile(x, y, tiles[x][y].type)
+					var xVal = this.tiles[x][y].x;
+					var yVal = this.tiles[x][y].y;
+					this.addTile(x, y, tiles[x][y].type);
+					this.tiles[x][y].targetX = xVal;
+					this.tiles[x][y].targetY = yVal;
 				}
 			}
 		}
@@ -147,10 +155,10 @@ class Grid extends Actor {
 		this.tiles[x][y] = new Tile(x*TILE_SPACING-(TILE_SPACING/2*(this.rows-1)), y*TILE_SPACING-(TILE_SPACING/2*(this.cols-1)), type);
 	}
 	getXIndexValue(tile) {
-		return (tile.x/TILE_SPACING + (this.rows-1)/2);
+		return (Math.round(tile.x)/TILE_SPACING + (this.rows-1)/2);
 	}
 	getYIndexValue(tile) {
-		return (tile.y/TILE_SPACING + (this.cols-1)/2);
+		return (Math.round(tile.y)/TILE_SPACING + (this.cols-1)/2);
 	}
 }
 
@@ -186,7 +194,7 @@ window.onload = function() {
 		}
 	);
 	
-	network.createSocket( "ws://match-3---.herokuapp.com" );
+	network.createSocket( "ws://localhost:5000" );
 	main();
 }
 
