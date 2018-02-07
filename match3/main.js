@@ -194,7 +194,7 @@ window.onload = function() {
 		}
 	);
 	
-	network.createSocket( "ws://localhost:5000" );
+	network.createSocket("ws://match-3---.herokuapp.com");
 	main();
 }
 
