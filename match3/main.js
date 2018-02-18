@@ -277,10 +277,11 @@ function main() {
 function startGame() {
 	document.getElementById("preGameGUI").style.visibility = "hidden";
 	network.createSocket("wss://match-3---.herokuapp.com");
-	/*network.currentPackets.push({
+	//network.createSocket("ws://localhost:5000");
+	network.currentPackets.push({
 		type: "playerJoin",
 		name: document.getElementById("name").value
-	});*/
+	});
 	main();
 }
 
