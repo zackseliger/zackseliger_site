@@ -5,10 +5,18 @@
 	body {
 		margin: 0;
 	}
+	#preGameGUI {
+		position: absolute;
+	}
 	</style>
 </head>
 
 <body>
+	<div id="preGameGUI">
+		name: <input id="name" />
+		<button onclick="startGame()">Start</button>
+	</div>
+
 	<canvas id="canvas"></canvas>
 	
 	<script src="gameIO.js"></script>
