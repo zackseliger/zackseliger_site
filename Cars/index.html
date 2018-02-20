@@ -1,3 +1,4 @@
+
 <script src="gameIO.js"></script>
 <img id="car" src="img/car.png">
 <img id="wheel" src="img/wheel.png">
@@ -77,7 +78,7 @@ input[type=text] {
 	
 	function playGame() {
 		getElem("pregame-gui").style.visibility = "hidden";
-		game.createSocket("ws://buuuuble.herokuapp.com");
+		game.createSocket("wss://buuuuble.herokuapp.com");
 		game.currentPackets.push({
 			type: "playerJoin",
 			name: getElem("nameText").value
