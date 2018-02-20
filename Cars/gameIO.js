@@ -782,8 +782,7 @@ function gameIO() {
 	}
 
 	game.visualIsClose = function(object) {
-		if (Math.abs(game.me.new.position.x - object.position.x) < 1920 / 2 + 1600 && Math.abs(game.me.new.position.y - object.position.y) < 1080 / 2 + 1600)
-			return true;
+		return true;
 	}
 
 	game.lerp = function(initialValue, newValue) {
@@ -810,7 +809,7 @@ function gameIO() {
 				}
 			}])));
 	}
-
+	
 	game.packetFunctions = {
 		"setID": function(packet) {
 			for (var i = 0; i < game.objects.length; i++) {
@@ -879,6 +878,9 @@ function gameIO() {
 			}
 		}
 	};
+	game.addPacketType = function( type, func ) {
+        game.packetFunctions[ type ] = func;
+    }
 	game.types = [];
 	game.objects = [];
 	game.usedIDs = [];
