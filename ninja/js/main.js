@@ -209,8 +209,8 @@ function startGame() {
 	backgroundCollection.add(new Grid());
 	document.getElementById("preGameGUI").style.visibility = "hidden";
 	document.getElementById("canvas").style.visibility = "visible";
-	//network.createSocket("wss://ninjaa-io.herokuapp.com");
-	network.createSocket("ws://localhost:5000");
+	network.createSocket("wss://ninjaa-io.herokuapp.com");
+	//network.createSocket("ws://localhost:5000");
 	network.currentPackets.push({
 		type: "playerJoin",
 		name: document.getElementById("name").value
