@@ -3,7 +3,7 @@ FRAME.resize = function() {
 	var stageWidth = window.innerWidth;
 	var stageHeight = window.innerHeight;
 	
-	var ratio = stageWidth / stageHeight;
+	/*var ratio = stageWidth / stageHeight;
 	
 	if (ratio > FRAME.game_width / FRAME.game_height) {
 		FRAME.scaleY = FRAME.scaleX = stageHeight / FRAME.game_height;
@@ -11,7 +11,7 @@ FRAME.resize = function() {
 	else {
 		FRAME.scaleX = FRAME.scaleY = stageWidth / FRAME.game_width;
 	}
-	if (stageWidth > 1000) FRAME.scaleX = FRAME.scaleY;
+	if (stageWidth > 1000) FRAME.scaleX = FRAME.scaleY;*/
 	
 	FRAME.canvas.width = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
 	FRAME.canvas.height = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight;
