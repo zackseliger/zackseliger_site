@@ -44,6 +44,21 @@ class EmptyVisual extends GameObj {
 class Leaderboard extends Actor {
 	constructor() {
 		super();
+		this.players = [];
+		this.playersText = [];
+	}
+	render() {
+		for (var i = 0; i < this.playersText.length; i++) {
+			this.playersText[i].draw();
+		}
+	}
+	putPlayers(players) {
+		this.players = players;
+		this.playersText = [];
+		for (var i = 0; i < Math.min(5,this.players.length); i++) {
+			this.playersText[i] = new Text(0, 0+i*60, "", "Arial", "#000", 42, "right");
+			this.playersText[i].text = (i+1)+"."+this.players[i].name+" - "+this.players[i].score;
+		}
 	}
 }
 
@@ -224,6 +239,7 @@ window.onload = function() {
 	FRAME.init(GAME_WIDTH, GAME_WIDTH, document.getElementById("canvas"));
 	keyboard = new Keyboard();
 	mouse = new Mouse();
+	leaderboard = new Leaderboard();
 	
 	nameText = new Text(0,-900, "", "Arial", "#222", 50, "center");
 	scoreText = new Text(-GAME_WIDTH/2+175,GAME_HEIGHT-225,"Score: 0","Arial","#222",50);
@@ -232,6 +248,7 @@ window.onload = function() {
 	mainCollection.add(scoreText);
 	mainCollection.add(nameText);
 	mainCollection.add(gridActor);
+	mainCollection.add(leaderboard);
 	
 	//types of packets
 	network.addPacketType("addTiles", function(packet) {
@@ -248,7 +265,12 @@ window.onload = function() {
 	network.addPacketType("changeScore", function(packet) {
 		var obj = network.getObj(packet.id);
 		obj.grid.score = packet.score;
-		scoreText.text = "Score: " + obj.grid.score;
+		if (network.me.id == packet.id) {
+			scoreText.text = "Score: " + obj.grid.score;
+		}
+	});
+	network.addPacketType("leaderboard", function(packet) {
+		leaderboard.putPlayers(packet.players);
 	});
 	
 	//types of objects
@@ -271,6 +293,9 @@ function main() {
 	FRAME.clearScreen();
 	mouse.update();
 	
+	leaderboard.x = window.innerWidth - 50;
+	leaderboard.y = -window.innerHeight + 20;
+	
 	for (var i = 0; i < network.objects.length; i++) {
 		if (network.me.id != -1 && network.objects[i].id != network.me.id) {
 			mainCollection.remove(network.objects[i].grid);
@@ -289,8 +314,8 @@ function main() {
 
 function startGame() {
 	document.getElementById("preGameGUI").style.visibility = "hidden";
-	//network.createSocket("wss://match-3---.herokuapp.com");
-	network.createSocket("ws://localhost:5000");
+	network.createSocket("wss://match-3---.herokuapp.com");
+	//network.createSocket("ws://localhost:5000");
 	network.currentPackets.push({
 		type: "playerJoin",
 		name: document.getElementById("name").value
