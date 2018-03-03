@@ -64,18 +64,17 @@ class Tile extends Actor {
 		this.targetY = getYIndexValue(y);
 	}
 	update() {
-		if (checkCollision(mouse, this)) {
-			this.moused = true;
+		if (this.moused) {
 			this.width += (this.normalWidth*1.4 - this.width) * 0.1;
 			this.height += (this.normalHeight*1.4 - this.height) * 0.1;
+			this.moused = false;
 		}
 		else {
-			this.moused = false;
 			this.width += (this.normalWidth - this.width) * 0.1;
 			this.height += (this.normalHeight - this.height) * 0.1;
 		}
-		this.x += (getXCoordValue(this.targetX) - this.x) * 0.1;
-		this.y += (getYCoordValue(this.targetY) - this.y) * 0.1;
+		this.x += (getXCoordValue(this.targetX)+this.xOffset - this.x) * 0.1;
+		this.y += (getYCoordValue(this.targetY)+this.yOffset - this.y) * 0.1;
 	}
 	render() {
 		if (this.type < 0) {
@@ -84,7 +83,7 @@ class Tile extends Actor {
 			return;
 		}
 		this.ctx.globalAlpha = this.alpha;
-		this.ctx.drawImage(this.image, -this.width/2+this.xOffset, -this.height/2+this.yOffset, this.width, this.height);
+		this.ctx.drawImage(this.image, -this.width/2, -this.height/2, this.width, this.height);
 		this.ctx.globalAlpha = 1.0;
 	}
 	offset(x,y) {
@@ -97,6 +96,7 @@ class Grid extends Actor {
 	constructor(rows, cols) {
 		super();
 		this.score = 0;
+		this.name = "";
 		this.rows = rows;
 		this.cols = cols;
 		this.selectedTile = null;
@@ -111,7 +111,7 @@ class Grid extends Actor {
 		}
 	}
 	update() {
-		//find selected tile
+		//collapse tiles and find selected tile
 		for (var x = 0; x < this.cols; x++) {
 			for (var y = 0; y < this.rows; y++) {
 				this.tiles[x][y].update();
@@ -128,8 +128,11 @@ class Grid extends Actor {
 						}
 					}
 				}
-				if (this.selectedTile == null && this.tiles[x][y].moused == true && mouse.clicking == true) {
-					this.selectedTile = this.tiles[x][y];
+				if (this.selectedTile == null && checkCollision(mouse, this.tiles[x][y])) {
+					if (mouse.clicking == true) {
+						this.selectedTile = this.tiles[x][y];
+					}
+					this.tiles[x][y].moused = true;
 				}
 			}
 		}
@@ -137,36 +140,43 @@ class Grid extends Actor {
 		//swap selected tile
 		if (mouse.clicking == false && this.selectedTile != null) {
 			if (Math.abs(this.selectedTile.xOffset) + Math.abs(this.selectedTile.yOffset) > TILE_SPACING/2) {
-				var xIndex = getXIndexValue(this.selectedTile.x);
-				var yIndex = getYIndexValue(this.selectedTile.y);
+				var xIndex = this.selectedTile.targetX;
+				var yIndex = this.selectedTile.targetY;
 				var targetX = xIndex;
 				var targetY = yIndex;
 				if (this.selectedTile.xOffset > 0) targetX = xIndex + 1;
 				else if (this.selectedTile.xOffset < 0) targetX = xIndex - 1;
 				else if (this.selectedTile.yOffset > 0) targetY = yIndex + 1;
 				else if (this.selectedTile.yOffset < 0) targetY = yIndex - 1;
+				this.tiles[targetX][targetY].targetX = xIndex;
+				this.tiles[targetX][targetY].targetY = yIndex;
+				this.selectedTile.targetX = targetX;
+				this.selectedTile.targetY = targetY;
 				
 				network.currentPackets.push({type: "swap", selectedTile: {x:xIndex, y:yIndex}, swapTile: {x:targetX, y:targetY}});
 			}
 			
 			this.selectedTile.offset(0,0);
+			this.selectedTile.moused = false;
 			this.selectedTile = null;
 		}
 		
 		//move selected tile while mouse down
 		if (this.selectedTile != null) {
-			var xDisplacement = Math.abs(mouse.x - this.selectedTile.x);
-			var yDisplacement = Math.abs(mouse.y - this.selectedTile.y);
+			this.selectedTile.moused = true;
+			var xDisplacement = Math.abs(mouse.x - this.selectedTile.x+this.selectedTile.xOffset);
+			var yDisplacement = Math.abs(mouse.y - this.selectedTile.y+this.selectedTile.yOffset);
 			if (Math.abs(xDisplacement) > Math.abs(yDisplacement)) {
-				var dis = Math.min(xDisplacement,TILE_SPACING);
-				if (mouse.x - this.selectedTile.x < 0) dis *= -1;
+				var dis = Math.min(xDisplacement,TILE_SPACING*0.75);
+				if (mouse.x - this.selectedTile.x+this.selectedTile.xOffset < 0) dis *= -1;
 				this.selectedTile.offset(dis, 0);
 			}
 			else {
-				var dis = Math.min(yDisplacement,TILE_SPACING);
-				if (mouse.y - this.selectedTile.y < 0) dis *= -1;
+				var dis = Math.min(yDisplacement,TILE_SPACING*0.75);
+				if (mouse.y - this.selectedTile.y+this.selectedTile.yOffset < 0) dis *= -1;
 				this.selectedTile.offset(0, dis);
 			}
+			console.log(this.selectedTile.xOffset+", "+this.selectedTile.yOffset);
 		}
 	}
 	draw() {
@@ -215,10 +225,12 @@ window.onload = function() {
 	keyboard = new Keyboard();
 	mouse = new Mouse();
 	
+	nameText = new Text(0,-900, "", "Arial", "#222", 50, "center");
 	scoreText = new Text(-GAME_WIDTH/2+175,GAME_HEIGHT-225,"Score: 0","Arial","#222",50);
 	var gridActor = new ImageActor(0,0,FRAME.getImage("grid"),3.13);
 	mainCollection = new Collection();
 	mainCollection.add(scoreText);
+	mainCollection.add(nameText);
 	mainCollection.add(gridActor);
 	
 	//types of packets
@@ -245,6 +257,7 @@ window.onload = function() {
 		function(obj, packet) {
 			obj.visual = new EmptyVisual();
 			obj.grid = new Grid(packet.grid.rows, packet.grid.cols);
+			obj.grid.name = packet.name;
 			obj.grid.addTiles(packet.tiles);
 			mainCollection.add(obj.grid);
 		}, undefined, undefined,
@@ -276,12 +289,13 @@ function main() {
 
 function startGame() {
 	document.getElementById("preGameGUI").style.visibility = "hidden";
-	network.createSocket("wss://match-3---.herokuapp.com");
-	//network.createSocket("ws://localhost:5000");
+	//network.createSocket("wss://match-3---.herokuapp.com");
+	network.createSocket("ws://localhost:5000");
 	network.currentPackets.push({
 		type: "playerJoin",
 		name: document.getElementById("name").value
 	});
+	nameText.text = document.getElementById("name").value;
 	main();
 }
 
