@@ -4,7 +4,7 @@ FRAME.resize = function() {
 	var stageHeight = window.innerHeight;
 	
 	var ratio = stageWidth / stageHeight;
-	ratio = 16/9;
+	//ratio = 16/9;
 	
 	if (ratio > FRAME.game_width / FRAME.game_height) {
 		FRAME.scaleY = FRAME.scaleX = stageHeight / FRAME.game_height;

@@ -25,6 +25,7 @@ var GRID_SPACES = 50;
 //misc
 var controls = {up: false, down: false, left: false, right: false};
 var gamePlaying = false;
+var firstPlay = true;
 FRAME.loadImage("assets/white.png", "white");
 FRAME.loadImage("assets/star.png", "star");
 
@@ -85,6 +86,42 @@ class Grid extends Actor {
 	}
 }
 
+class Leaderboard extends Actor {
+	constructor() {
+		super();
+		this.players = [];
+		this.playersText = [];
+		this.width = 0;
+		this.height = 0;
+	}
+	update() {
+		//(-FRAME.y + window.innerHeight)/FRAME.scaleY - 50;
+		this.x = (-FRAME.x + window.innerWidth)/FRAME.scaleX - this.width/2 - 10;
+		this.y = -FRAME.y/FRAME.scaleY + 10;
+	}
+	render() {
+		this.ctx.fillStyle = "rgba(41,41,41,0.5)";
+		this.ctx.fillRect(-this.width/2, 0, this.width, this.height);
+		for (var i = 0; i < this.playersText.length; i++) {
+			this.playersText[i].draw();
+		}
+	}
+	putPlayers(players) {
+		this.players = players;
+		this.playersText = [];
+		this.width = 0;
+		this.height = 0;
+		
+		for (var i = 0; i < Math.min(5,this.players.length); i++) {
+			this.playersText[i] = new Text(0, 10+i*60, (i+1)+"."+this.players[i].name+" - "+this.players[i].exp, "Arial", "#FFF", 42, "center");
+			if (this.playersText[i].width > this.width) this.width = this.playersText[i].width;
+			this.height += 60;
+		}
+		this.width += 20;
+		this.height += 20;
+	}
+}
+
 class TrailParticle extends Actor {
 	constructor(obj, fadeRate) {
 		super(obj.x, obj.y, obj.rotation);
@@ -119,6 +156,7 @@ class Ninja extends Actor {
 		this.height = 100;
 		this.health = 100;
 		this.targetHealth = 100;
+		this.exp = 0;
 		this.numStars = 0;
 		this.clicking = false;
 	}
@@ -127,7 +165,7 @@ class Ninja extends Actor {
 		this.y = this.visual.position.y;
 		this.nameText.text = this.name+" ("+this.numStars+"/5)";
 		this.health += (this.targetHealth - this.health) * 0.1;
-		addTrail(this);
+		addTrail(this, 0.5);
 	}
 	render() {
 		this.ctx.drawImage(this.image, -this.width/2, -this.height/2, this.width, this.height);
@@ -155,7 +193,7 @@ class Star extends Actor {
 		this.y = this.visual.position.y;
 		this.rotation += 0.01;
 		if (this.ownerID != -1) {
-			addTrail(this, 0.15);
+			addTrail(this, 0.3);
 			this.rotation += 0.02;
 		}
 	}
@@ -189,6 +227,7 @@ window.onload = function() {
 	keyboard = new Keyboard();
 	mouse = new Mouse();
 	scoreText = new Text(0,0,"","Arial","#222",32);
+	leaderboard = new Leaderboard();
 	backgroundCollection = new Collection();
 	particleCollection = new Collection();
 	starCollection = new Collection();
@@ -200,6 +239,8 @@ window.onload = function() {
 			obj.visual = new EmptyVisual();
 			obj.name = packet.name;
 			obj.ninja = new Ninja(obj);
+			obj.ninja.health = packet.health;
+			obj.ninja.targetHealth = packet.health;
 			playerCollection.add(obj.ninja);
 		}, function (obj) {
 			var prevRot = Math.round(obj.ninja.rotation * 100);
@@ -243,16 +284,32 @@ window.onload = function() {
 			endGame();
 		}
 	);
-	
 	network.addPacketType(
 		"changeHealth",
 		function(packet) {
-			console.log(packet.id + ", " + packet.health);
 			for (var i = 0; i < network.objects.length; i++) {
 				if (network.objects[i].id == packet.id) {
 					network.objects[i].ninja.targetHealth = packet.health;
+					break;
 				}
 			}
+		}
+	);
+	network.addPacketType(
+		"changeExp",
+		function(packet) {
+			for (var i = 0; i < network.objects.length; i++) {
+				if (network.objects[i].id == packet.id) {
+					network.objects[i].ninja.exp = packet.exp;
+					break;
+				}
+			}
+		}
+	);
+	network.addPacketType(
+		"leaderboard",
+		function(packet) {
+			leaderboard.putPlayers(packet.players);
 		}
 	);
 }
@@ -264,6 +321,7 @@ function endGame() {
 }
 
 function startGame() {
+	backgroundCollection.clear();
 	backgroundCollection.add(new WhiteBack());
 	backgroundCollection.add(new Grid());
 	document.getElementById("preGameGUI").style.visibility = "hidden";
@@ -271,20 +329,14 @@ function startGame() {
 		type: "playerJoin",
 		name: document.getElementById("name").value
 	});
-	preMain();
-}
-
-function preMain() {
-	network.update();
 	
-	if (network.me.id == -1) {
-		requestFrame(preMain);
-	}
-	else {
+	gamePlaying = true;
+	if (firstPlay) {
+		network.update();
 		FRAME.x = (-network.me.visual.position.x)*FRAME.scaleX + window.innerWidth/2;
 		FRAME.y = (-network.me.visual.position.y)*FRAME.scaleY + window.innerHeight/2;
-		gamePlaying = true;
 		main();
+		firstPlay = false;
 	}
 }
 
@@ -292,22 +344,31 @@ function main() {
 	FRAME.clearScreen();
 	mouse.update();
 	
+	scoreText.x = -FRAME.x/FRAME.scaleX + 20;
+	scoreText.y = (-FRAME.y + window.innerHeight)/FRAME.scaleY - 50;
+	if (network.me.ninja !== undefined) scoreText.text = "Score: " + network.me.ninja.exp;
+	
 	backgroundCollection.update();
 	particleCollection.update();
 	starCollection.update();
 	playerCollection.update();
+	leaderboard.update();
 	
 	backgroundCollection.draw();
 	particleCollection.draw();
 	starCollection.draw();
 	playerCollection.draw();
 	
+	//ui
+	scoreText.draw();
+	leaderboard.draw();
+	
 	//camera
 	FRAME.x = (-network.me.visual.position.x)*FRAME.scaleX + window.innerWidth/2;
 	FRAME.y = (-network.me.visual.position.y)*FRAME.scaleY + window.innerHeight/2;
 	
-	//input
 	if (gamePlaying == true) {
+		//input
 		var prevControls = JSON.stringify(controls);
 		if (keyboard[87] || keyboard[38]) {
 			controls.up = true;
@@ -338,6 +399,7 @@ function main() {
 		}
 	}
 	
+	//misc
 	network.update();
 	requestFrame(main);
 }
