@@ -282,8 +282,8 @@ window.onload = function() {
 	FRAME.init(GAME_WIDTH, GAME_HEIGHT, document.getElementById("canvas"));
 	document.getElementById("canvas").style.backgroundColor = "#EEE";
 	document.addEventListener('contextmenu', event => event.preventDefault());
-	//network.createSocket("wss://ninjaa-io.herokuapp.com");
-	network.createSocket("ws://localhost:5000");
+	network.createSocket("wss://ninjaa-io.herokuapp.com");
+	//network.createSocket("ws://localhost:5000");
 	keyboard = new Keyboard();
 	mouse = new Mouse();
 	scoreText = new Text(0,0,"","Arial","#222",32);
