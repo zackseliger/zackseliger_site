@@ -238,7 +238,8 @@ Mouse = function() {
 	mouse.xy = 0;
 	mouse.xVel = 0;
 	mouse.yVel = 0;
-	mouse.clicking = false;
+	mouse.leftClicking = false;
+	mouse.rightClicking = false;
 	mouse.deltaY = 0;
 	mouse.prevDeltaY = 0;
 	
@@ -258,11 +259,13 @@ Mouse = function() {
 		mouse.cx = e.clientX;
 		mouse.cy = e.clientY;
 	}
-	function down() {
-		mouse.clicking = true;
+	function down(e) {
+		if (e.button == 0) mouse.leftClicking = true;
+		else if (e.button == 2) mouse.rightClicking = true;
 	}
-	function up() {
-		mouse.clicking = false;
+	function up(e) {
+		if (e.button == 0) mouse.leftClicking = false;
+		else if (e.button == 2) mouse.rightClicking = false;
 	}
 	function wheel(e) {
 		mouse.deltaY = e.deltaY;
