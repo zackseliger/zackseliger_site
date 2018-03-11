@@ -23,6 +23,7 @@ var ARENA_X = 0;
 var ARENA_Y = 0;
 var GRID_SPACES = 50;
 //misc
+var LINE_WIDTH = 2;
 var controls = {up: false, down: false, left: false, right: false};
 var gamePlaying = false;
 var firstPlay = true;
@@ -105,11 +106,14 @@ class Leaderboard extends Actor {
 		this.y = -FRAME.y/FRAME.scaleY + 10;
 	}
 	render() {
-		this.ctx.fillStyle = "rgba(41,41,41,0.5)";
+		this.ctx.fillStyle = "#FFF";
 		this.ctx.fillRect(-this.width/2, 0, this.width, this.height);
 		for (var i = 0; i < this.playersText.length; i++) {
 			this.playersText[i].draw();
 		}
+		this.ctx.strokeStyle = "#222";
+		this.ctx.lineWidth = LINE_WIDTH;
+		this.ctx.strokeRect(-this.width/2, 0, this.width, this.height);
 	}
 	putPlayers(players) {
 		this.players = players;
@@ -118,7 +122,7 @@ class Leaderboard extends Actor {
 		this.height = 0;
 		
 		for (var i = 0; i < Math.min(5,this.players.length); i++) {
-			this.playersText[i] = new Text(0, 10+i*60, (i+1)+". "+this.players[i].name+" - "+this.players[i].exp, "Arial", "#FFF", 42, "center");
+			this.playersText[i] = new Text(0, 10+i*60, (i+1)+". "+this.players[i].name+" - "+this.players[i].exp, "Arial", "#222", 42, "center");
 			if (this.playersText[i].width > this.width) this.width = this.playersText[i].width;
 			this.height += 60;
 		}
@@ -136,7 +140,7 @@ class ExpBar extends Actor {
 		this.width = 600;
 		this.height = 60;
 		this.expText = new Text(0,-32,"","Arial","#222",52, "center");
-		this.levelText = new Text(0,-100,"","Arial","#222",52,"center");
+		this.levelText = new Text(0,-150,"","Arial","#222",52,"center");
 	}
 	update() {
 		this.value += (this.targetValue - this.value) * 0.1;
@@ -154,7 +158,7 @@ class ExpBar extends Actor {
 		this.ctx.fillRect(-this.width/2, -this.height/2, this.width, this.height);
 		this.ctx.fillStyle = "#2299EE";
 		this.ctx.fillRect(-this.width/2, -this.height/2, this.width*(this.value/this.max), this.height);
-		this.ctx.lineWidth = 5;
+		this.ctx.lineWidth = LINE_WIDTH;
 		this.ctx.strokeStyle = "#222";
 		this.ctx.strokeRect(-this.width/2, -this.height/2, this.width, this.height);
 		this.expText.draw();
@@ -165,6 +169,41 @@ class ExpBar extends Actor {
 	}
 	setMax(max) {
 		this.max = max;
+	}
+}
+
+class StaminaBar extends Actor {
+	constructor() {
+		super();
+		this.value = 0;
+		this.targetValue = 0;
+		this.max = 100;
+		this.width = 400;
+		this.height = 30;
+		this.staminaText = new Text(0,-15,"","Arial","#222",24,"center");
+	}
+	update() {
+		this.value += (this.targetValue - this.value) * 0.1;
+		if (Math.abs(this.targetValue - this.value) < 0.1) {
+			this.value = this.targetValue;
+		}
+		this.staminaText.text = Math.floor(this.value)+"/"+this.max;
+		
+		this.x = (-FRAME.x + window.innerWidth/2)/FRAME.scaleX;
+		this.y = (-FRAME.y + window.innerHeight)/FRAME.scaleY - 160;
+	}
+	render() {
+		this.ctx.fillStyle = "#FFF";
+		this.ctx.fillRect(-this.width/2, -this.height/2, this.width, this.height);
+		this.ctx.fillStyle = "#EE3333";
+		this.ctx.fillRect(-this.width/2, -this.height/2, this.width*(this.value/this.max), this.height);
+		this.ctx.lineWidth = LINE_WIDTH;
+		this.ctx.strokeStyle = "#222";
+		this.ctx.strokeRect(-this.width/2, -this.height/2, this.width, this.height);
+		this.staminaText.draw();
+	}
+	setValue(val) {
+		this.targetValue = val;
 	}
 }
 
@@ -229,10 +268,14 @@ class Ninja extends Actor {
 		this.ctx.rotate(-this.rotation);
 		this.nameText.draw();//name
 		//health bar
-		this.ctx.fillStyle = "rgba(41, 41, 41, 0.2)";
+		this.ctx.fillStyle = "#FFF";
 		this.ctx.fillRect(-this.width/2, -100, this.width, 20);
 		this.ctx.fillStyle = "#22EE97";
 		this.ctx.fillRect(-this.width/2, -100, this.width*(this.health/100), 20);
+		this.ctx.strokeStyle = "#222";
+		this.ctx.lineWidth = LINE_WIDTH;
+		this.ctx.strokeRect(-this.width/2, -100, this.width, 20);
+		
 		this.ctx.rotate(this.rotation);
 	}
 }
@@ -288,11 +331,15 @@ window.onload = function() {
 	mouse = new Mouse();
 	scoreText = new Text(0,0,"","Arial","#222",32);
 	expBar = new ExpBar();
+	staminaBar = new StaminaBar();
 	leaderboard = new Leaderboard();
 	backgroundCollection = new Collection();
 	particleCollection = new Collection();
 	starCollection = new Collection();
 	playerCollection = new Collection();
+	
+	backgroundCollection.add(new WhiteBack());
+	backgroundCollection.add(new Grid());
 	
 	network.addType(
 		"player",
@@ -379,11 +426,19 @@ window.onload = function() {
 		}
 	);
 	network.addPacketType(
+		"changeStamina",
+		function(packet) {
+			staminaBar.setValue(packet.stamina);
+		}
+	);
+	network.addPacketType(
 		"leaderboard",
 		function(packet) {
 			leaderboard.putPlayers(packet.players);
 		}
 	);
+	
+	main();
 }
 
 function endGame() {
@@ -393,10 +448,10 @@ function endGame() {
 }
 
 function startGame() {
-	backgroundCollection.clear();
-	backgroundCollection.add(new WhiteBack());
-	backgroundCollection.add(new Grid());
 	document.getElementById("preGameGUI").style.visibility = "hidden";
+	expBar.value = 0;
+	expBar.setMax(200);
+	staminaBar.value = 0;
 	network.currentPackets.push({
 		type: "playerJoin",
 		name: document.getElementById("name").value
@@ -404,10 +459,8 @@ function startGame() {
 	
 	gamePlaying = true;
 	if (firstPlay) {
-		network.update();
 		FRAME.x = (-network.me.visual.position.x)*FRAME.scaleX + window.innerWidth/2;
 		FRAME.y = (-network.me.visual.position.y)*FRAME.scaleY + window.innerHeight/2;
-		main();
 		firstPlay = false;
 	}
 }
@@ -419,13 +472,14 @@ function main() {
 	scoreText.x = -FRAME.x/FRAME.scaleX + 20;
 	scoreText.y = (-FRAME.y + window.innerHeight)/FRAME.scaleY - 50;
 	if (network.me.ninja !== undefined) scoreText.text = "Score: " + network.me.ninja.exp;
+	leaderboard.update();
+	expBar.update();
+	staminaBar.update();
 	
 	backgroundCollection.update();
 	particleCollection.update();
 	starCollection.update();
 	playerCollection.update();
-	leaderboard.update();
-	expBar.update();
 	
 	backgroundCollection.draw();
 	particleCollection.draw();
@@ -433,13 +487,22 @@ function main() {
 	playerCollection.draw();
 	
 	//ui
-	scoreText.draw();
-	leaderboard.draw();
-	expBar.draw();
+	if (gamePlaying == true) {
+		scoreText.draw();
+		leaderboard.draw();
+		expBar.draw();
+		staminaBar.draw();
+	}
 	
 	//camera
-	FRAME.x = (-network.me.visual.position.x)*FRAME.scaleX + window.innerWidth/2;
-	FRAME.y = (-network.me.visual.position.y)*FRAME.scaleY + window.innerHeight/2;
+	if (gamePlaying == true) {
+		FRAME.x = (-network.me.visual.position.x)*FRAME.scaleX + window.innerWidth/2;
+		FRAME.y = (-network.me.visual.position.y)*FRAME.scaleY + window.innerHeight/2;
+	}
+	else {
+		FRAME.x = -ARENA_X - ARENA_WIDTH/2;
+		FRAME.y = -ARENA_Y - ARENA_HEIGHT/2;
+	}
 	
 	if (gamePlaying == true) {
 		//input
