@@ -450,8 +450,10 @@ function endGame() {
 function startGame() {
 	document.getElementById("preGameGUI").style.visibility = "hidden";
 	expBar.value = 0;
+	expBar.setValue(0);
 	expBar.setMax(200);
 	staminaBar.value = 0;
+	staminaBar.setValue(100);
 	network.currentPackets.push({
 		type: "playerJoin",
 		name: document.getElementById("name").value
