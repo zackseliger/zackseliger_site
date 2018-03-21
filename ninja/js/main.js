@@ -28,12 +28,14 @@ var controls = {up: false, down: false, left: false, right: false};
 var gamePlaying = false;
 var firstPlay = true;
 FRAME.loadImage("assets/skins/1.png", "skin1");
+FRAME.loadImage("assets/skins/2.png", "skin2");
 FRAME.loadImage("assets/belts/1.png", "belt1");
 FRAME.loadImage("assets/belts/2.png", "belt2");
 FRAME.loadImage("assets/belts/3.png", "belt3");
 FRAME.loadImage("assets/belts/4.png", "belt4");
 FRAME.loadImage("assets/belts/5.png", "belt5");
 FRAME.loadImage("assets/belts/6.png", "belt6");
+FRAME.loadImage("assets/belts/7.png", "belt7");
 FRAME.loadImage("assets/star.png", "star");
 
 class WhiteBack extends Actor {
@@ -231,13 +233,15 @@ class TrailParticle extends Actor {
 }
 
 class Ninja extends Actor {
-	constructor(owner) {
+	constructor(owner, skin=1, belt=1) {
 		super();
 		this.visual = owner.visual;
-		this.image = FRAME.getImage("skin1");
-		this.beltImage = FRAME.getImage("belt1");
+		this.image = FRAME.getImage("skin"+skin);
+		this.beltImage = FRAME.getImage("belt"+belt);
 		this.name = owner.name;
-		this.nameText = new Text(0, -175, this.name+" (0/5)", "Arial", "#222", 42, "center");
+		this.showName = true;
+		if (owner.name === undefined) this.showName = false;
+		this.nameText = new Text(0, -175, this.name+" (0/10)", "Arial", "#222", 42, "center");
 		this.width = 100;
 		this.height = 100;
 		this.leftClicking = false;
@@ -245,10 +249,10 @@ class Ninja extends Actor {
 		this.prevLevel = 0;
 		//we get this data from the server on add
 		this.health = 0;
+		this.maxHealth = 100;
 		this.targetHealth = 0;
 		this.level = 0;
 		this.exp = 0;
-		this.maxExp = 0;
 		this.numStars = 0;
 	}
 	update() {
@@ -258,7 +262,7 @@ class Ninja extends Actor {
 		}
 		this.x = this.visual.position.x;
 		this.y = this.visual.position.y;
-		this.nameText.text = this.name+" ("+this.numStars+"/5)";
+		this.nameText.text = this.name+" ("+this.numStars+"/10)";
 		this.health += (this.targetHealth - this.health) * 0.1;
 		addTrail(this, 0.4);
 	}
@@ -266,17 +270,20 @@ class Ninja extends Actor {
 		this.ctx.drawImage(this.image, -this.width/2, -this.height/2, this.width, this.height);
 		this.ctx.drawImage(this.beltImage, -this.width/2, 15, this.width, 55/3.6);
 		this.ctx.rotate(-this.rotation);
-		this.nameText.draw();//name
+		if (this.showName) this.nameText.draw();
 		//health bar
 		this.ctx.fillStyle = "#FFF";
 		this.ctx.fillRect(-this.width/2, -100, this.width, 20);
 		this.ctx.fillStyle = "#22EE97";
-		this.ctx.fillRect(-this.width/2, -100, this.width*(this.health/100), 20);
+		this.ctx.fillRect(-this.width/2, -100, this.width*(this.health/this.maxHealth), 20);
 		this.ctx.strokeStyle = "#222";
 		this.ctx.lineWidth = LINE_WIDTH;
 		this.ctx.strokeRect(-this.width/2, -100, this.width, 20);
 		
 		this.ctx.rotate(this.rotation);
+	}
+	setMaxHealth(health) {
+		this.maxHealth = health;
 	}
 }
 
@@ -325,11 +332,10 @@ window.onload = function() {
 	FRAME.init(GAME_WIDTH, GAME_HEIGHT, document.getElementById("canvas"));
 	document.getElementById("canvas").style.backgroundColor = "#EEE";
 	document.addEventListener('contextmenu', event => event.preventDefault());
-	network.createSocket("wss://ninjaa-io.herokuapp.com");
-	//network.createSocket("ws://localhost:5000");
+	//network.createSocket("wss://ninjaa-io.herokuapp.com");
+	network.createSocket("ws://localhost:5000");
 	keyboard = new Keyboard();
 	mouse = new Mouse();
-	scoreText = new Text(0,0,"","Arial","#222",32);
 	expBar = new ExpBar();
 	staminaBar = new StaminaBar();
 	leaderboard = new Leaderboard();
@@ -352,6 +358,8 @@ window.onload = function() {
 			obj.ninja.level = packet.level;
 			obj.ninja.exp = packet.exp;
 			obj.ninja.maxExp = packet.maxExp;
+			obj.ninja.width = obj.ninja.height = packet.objSize;
+			obj.ninja.numStars = packet.numStars;
 			playerCollection.add(obj.ninja);
 		}, function (obj) {
 			var prevRot = Math.round(obj.ninja.rotation * 100);
@@ -368,14 +376,27 @@ window.onload = function() {
 				}
 			}
 		}, 
-		function (obj, packet) {
-			obj.ninja.numStars = packet.numStars;
-		},
+		function (obj, packet) {},
 		function (obj) {
 			playerCollection.remove(obj.ninja);
 		}
 	);
-	
+	network.addType(
+		"npc",
+		function(obj, packet) {
+			obj.visual = new EmptyVisual();
+			obj.ninja = new Ninja(obj,2,7);
+			obj.ninja.health = packet.health;
+			obj.ninja.targetHealth = packet.health;
+			obj.ninja.maxHealth = 45;
+			playerCollection.add(obj.ninja);
+		}, function (obj) {
+			obj.ninja.rotation = obj.visual.rotation;
+		}, undefined,
+		function (obj) {
+			playerCollection.remove(obj.ninja);
+		}
+	);
 	network.addType(
 		"star",
 		function( obj, packet ) {
@@ -415,6 +436,7 @@ window.onload = function() {
 					network.objects[i].ninja.level = packet.level;
 					network.objects[i].ninja.exp = packet.exp;
 					network.objects[i].ninja.maxExp = packet.maxExp;
+					network.objects[i].ninja.width = network.objects[i].ninja.height = packet.objSize;
 					break;
 				}
 			}
@@ -422,6 +444,17 @@ window.onload = function() {
 			if (network.me.id == packet.id) {
 				expBar.setValue(packet.exp);
 				expBar.setMax(packet.maxExp);
+			}
+		}
+	);
+	network.addPacketType(
+		"changeStars",
+		function(packet) {
+			for (var i = 0; i < network.objects.length; i++) {
+				if (network.objects[i].id == packet.id) {
+					network.objects[i].ninja.numStars = packet.numStars;
+					break;
+				}
 			}
 		}
 	);
@@ -471,9 +504,6 @@ function main() {
 	FRAME.clearScreen();
 	mouse.update();
 	
-	scoreText.x = -FRAME.x/FRAME.scaleX + 20;
-	scoreText.y = (-FRAME.y + window.innerHeight)/FRAME.scaleY - 50;
-	if (network.me.ninja !== undefined) scoreText.text = "Score: " + network.me.ninja.exp;
 	leaderboard.update();
 	expBar.update();
 	staminaBar.update();
@@ -490,13 +520,12 @@ function main() {
 	
 	//ui
 	if (gamePlaying == true) {
-		scoreText.draw();
 		leaderboard.draw();
 		expBar.draw();
 		staminaBar.draw();
 	}
 	
-	//camera
+	//camera/update if game isn't running
 	if (gamePlaying == true) {
 		FRAME.x = (-network.me.visual.position.x)*FRAME.scaleX + window.innerWidth/2;
 		FRAME.y = (-network.me.visual.position.y)*FRAME.scaleY + window.innerHeight/2;
@@ -504,6 +533,7 @@ function main() {
 	else {
 		FRAME.x = -ARENA_X - ARENA_WIDTH/2;
 		FRAME.y = -ARENA_Y - ARENA_HEIGHT/2;
+		if (keyboard[13]) startGame();
 	}
 	
 	if (gamePlaying == true) {

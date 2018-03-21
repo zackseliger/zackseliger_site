@@ -96,7 +96,7 @@ function gameIO() {
       }
     }
     if( game.ws.readyState == 1 ) {
-      game.ws.send( game.toBuffer( JSON.stringify( [ { type: "getID" } ] ) ) );
+		game.currentPackets.push( { type: "getID" } );
     }
   }
 
@@ -146,11 +146,11 @@ function gameIO() {
       var obj = {
         new : {
           position: new game.Vector2( packet.x, packet.y ),
-          rotation: packet.a
+          rotation: packet.a / 100
         },
         old : {
           position: new game.Vector2( packet.x, packet.y ),
-          rotation: packet.a
+          rotation: packet.a / 100
         },
         id : packet.i,
 				ticksAsleep : 0,
@@ -176,7 +176,7 @@ function gameIO() {
       obj.old.position = obj.visual.position.clone();
       obj.old.rotation = obj.visual.rotation;
       obj.new.position = new game.Vector2( packet.x, packet.y );
-      obj.new.rotation = packet.a;
+      obj.new.rotation = packet.a / 100;
 			if( Math.abs( obj.old.rotation - obj.new.rotation ) > Math.PI ) {
 				if( obj.old.rotation > obj.new.rotation )
 					obj.old.rotation -= Math.PI * 2;
@@ -209,18 +209,19 @@ function gameIO() {
     game.serverDetails.thisFrame = Date.now();
     game.serverDetails.dt = Math.max( Math.min( ( game.serverDetails.thisFrame - game.serverDetails.lastFrame ) / 16, 10 ), 5);
     game.serverDetails.lastFrame = game.serverDetails.thisFrame;
-		//try {
-			var packets = JSON.parse( game.fromBuffer( message.data ) );
-			for( var i = 0; i < packets.length; i++ ) {
-				var packet = packets[i];
-				if( game.packetFunctions[ packet.t ] !== undefined )
-					game.packetFunctions[ packet.t ]( packet );
-				else {
-					console.log( "Encountered issue: unknown packet type " + packet.t );
-					console.log( packets );
-                    console.log( new Error().stack );
+		try {
+			if( msgpack !== undefined ) {
+				var packets = msgpack.decode( new Uint8Array( message.data ) );
+				for( var i = 0; i < packets.length; i++ ) {
+					var packet = packets[i];
+					if( game.packetFunctions[ packet.t ] !== undefined )
+						game.packetFunctions[ packet.t ]( packet );
+					else {
+						console.log( "Encountered issue: unknown packet type" );
+						console.log( packets );
+					}
 				}
-			}
+		    }
 			game.serverDetails.ticksSincePacket = 0;
 			for( var i = 0; i < game.objects.length; i++ ) {
 				game.objects[ i ].ticksAsleep++;
@@ -238,9 +239,9 @@ function gameIO() {
 			}
 			game.usedIDs = [];
 			game.selfExists();
-		//} catch( e ) {
-            //console.log( "Caught Error, plx report" );
-		//}
+		} catch( e ) {
+            console.log( "Caught Error, plx report" );
+		}
   }
   game.update = function() {
     game.serverDetails.ticksSincePacket += 1
@@ -252,10 +253,10 @@ function gameIO() {
       game.types[ obj.type ].tickUpdate( obj );
     }
     game.clientDetails.thisFrame = Date.now();
-    game.clientDetails.dt = ( game.clientDetails.thisFrame - game.clientDetails.lastFrame ) / 16.67;
+    game.clientDetails.dt = Math.min( ( game.clientDetails.thisFrame - game.clientDetails.lastFrame ) / 16.67, 2 );
     game.clientDetails.lastFrame = game.clientDetails.thisFrame;
 		if( game.ws.readyState == 1 && game.currentPackets.length > 0 ) {
-			game.ws.send( game.toBuffer( JSON.stringify( game.currentPackets ) ) );
+			game.ws.send(msgpack.encode( game.currentPackets ))
 			game.currentPackets = [];
 		}
   }
