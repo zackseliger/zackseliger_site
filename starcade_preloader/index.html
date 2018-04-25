@@ -1,0 +1,431 @@
+<head>
+<link href="https://fonts.googleapis.com/css?family=Denk+One" rel="stylesheet">
+<style>
+body {
+	margin: 0;
+	padding: 0;
+	background-color: #1a2b36;
+}
+</style>
+</head>
+
+<body>
+<canvas id="canvas"></canvas>
+<script>
+var FRAME = {ctx:null, canvas:null, game_width:0, game_height:0, scaleX:1, scaleY:1, x:0, y:0, images: new Map()};
+FRAME.resize = function() {
+	var stageWidth = window.innerWidth;
+	var stageHeight = window.innerHeight;
+	
+	var ratio = stageWidth / stageHeight;
+	
+	if (ratio > FRAME.game_width / FRAME.game_height) {
+		FRAME.scaleY = FRAME.scaleX = stageHeight / FRAME.game_height;
+	}
+	else {
+		FRAME.scaleX = FRAME.scaleY = stageWidth / FRAME.game_width;
+	}
+	if (stageWidth > 1000) FRAME.scaleX = FRAME.scaleY;
+	
+	FRAME.canvas.width = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
+	FRAME.canvas.height = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight;
+}
+FRAME.init = function(w, h, canvas) {
+	FRAME.game_width = w;
+	FRAME.game_height = h;
+	FRAME.canvas = canvas;
+	FRAME.ctx = canvas.getContext("2d");
+	
+	window.addEventListener( 'resize', FRAME.resize, false );
+	FRAME.resize();
+}
+FRAME.clearScreen = function() {
+	FRAME.ctx.setTransform(FRAME.scaleX, 0, 0, FRAME.scaleY, FRAME.x, FRAME.y);
+	FRAME.ctx.clearRect(-FRAME.x / FRAME.scaleX, -FRAME.y / FRAME.scaleY, document.body.clientWidth / FRAME.scaleX, document.body.clientHeight / FRAME.scaleY);
+}
+FRAME.loadImage = function(path, name) {
+	var img = new Image();
+	img.src = path;
+	img.key = name;
+	FRAME.images.set(name, img);
+}
+FRAME.getImage = function(name) {
+	return FRAME.images.get(name);
+}
+
+requestFrame = ( window.requestAnimationFrame || window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame ||
+	window.oRequestAnimationFrame || window.msRequestAnimationFrame ||
+	function( callback ) {
+		window.setTimeout(callback, 1000 / 60);
+	});
+	
+class Actor {
+	constructor(x, y, rot, ctx) {
+		this.age = 0;
+		this.ctx = ctx || FRAME.ctx;
+		this.x = x || 0;
+		this.y = y || 0;
+		this.rotation = rot || 0.0;
+	}
+	render() {}
+	draw() {
+		this.ctx.translate(this.x, this.y);
+		this.ctx.rotate(this.rotation);
+		this.render();
+		this.ctx.rotate(-this.rotation);
+		this.ctx.translate(-this.x, -this.y);
+	}
+	update(deltaTime) {
+		this.age += deltaTime;
+	}
+}
+
+class ImageActor extends Actor {
+	constructor(x, y, img, size=1) {
+		super(x, y);
+		
+		this.image = img;
+		this.width = this.image.width * size;
+		this.height = this.image.height * size;
+	}
+	render() {
+		this.ctx.drawImage(this.image, -this.width/2, -this.height/2, this.width, this.height);
+	}
+}
+
+class Collection {
+	constructor(ctx) {
+		this.objects = [];
+		this.x = 0;
+		this.y = 0;
+		this.rotation = 0;
+		this.ctx = ctx || FRAME.ctx;
+	}
+	add(obj) {
+		this.objects.push(obj);
+	}
+	remove(obj) {
+		var index = this.objects.indexOf(obj);
+		if (index != -1) {
+			this.objects.splice(index, 1);
+		}
+	}
+	clear() {
+		this.objects.splice(0, this.objects.length);
+	}
+	update(deltaTime) {
+		for (var i = 0; i < this.objects.length; i++) {
+			this.objects[i].update(deltaTime);
+			if (this.objects[i].dead !== undefined && this.objects[i].dead === true) {
+				this.remove(this.objects[i]);
+				i--;
+			}
+		}
+	}
+	draw() {
+		for (var i = 0; i < this.objects.length; i++) {
+			this.ctx.translate(this.x, this.y);
+			this.ctx.rotate(this.rotation);
+				this.objects[i].draw();
+			this.ctx.rotate(-this.rotation);
+			this.ctx.translate(-this.x, -this.y);
+		}
+	}
+}
+
+class Text {
+	constructor(x, y, text, font, fillStyle, fontsize, justify, rot, ctx) {
+		this.x = x || 0;
+		this.y = y || 0;
+		this.text = text || "";
+		this.font = font || "Arial";
+		this.fillStyle = fillStyle || "#333";
+		this.fontsize = fontsize || 30;
+		this.justify = justify || "left";
+		this.rotation = rot || 0;
+		this.ctx = ctx || FRAME.ctx;
+		
+		this.ctx.font = this.fontsize + "px " + this.font;
+		this.width = this.ctx.measureText(this.text).width;
+		
+		this.update = function(deltaTime) {}
+		this.render = function() {}
+		this.draw = function() {
+			this.ctx.translate(this.x, this.y);
+			this.ctx.rotate(this.rotation);
+				this.ctx.font = this.fontsize + "px " + this.font;
+				this.ctx.fillStyle = this.fillStyle;
+				this.width = this.ctx.measureText(this.text).width;
+				this.render();//whatever extra stuff
+				if (this.justify == "left") {
+					this.ctx.fillText(this.text, 0, this.fontsize);
+				}
+				else if (this.justify == "right") {
+					this.ctx.fillText(this.text, -this.width, this.fontsize);
+				}
+				else {
+					this.ctx.fillText(this.text, -this.width / 2, this.fontsize);
+				}
+			this.ctx.rotate(-this.rotation);
+			this.ctx.translate(-this.x, -this.y);
+		}
+	}
+}
+</script>
+
+<!--SPECIFIC CODE FOR LOADING SCREEN-->
+<script>
+FRAME.loadImage("starMountain.svg", "logo");
+FRAME.loadImage("starCross.svg", "star");
+
+//constants that you might find helpful
+var SUN_RADIUS = 150;
+var NUM_STARS = 8;
+var LOADING_BAR_WIDTH = 500;
+var NUM_BARS = 6;
+//the one and only...
+var loadingProgress = 0;
+
+//global functions
+function addLoadingProgress(amt) {
+	loadingProgress += amt;
+}
+function getLoadingProgress() {
+	return loadingProgress;
+}
+function setLoadingProgress(a) {
+	loadingProgress = a;
+}
+function isGameReady() {
+	return loadingProgress>=100;
+}
+
+class Star extends ImageActor {
+	constructor() {
+		super(0,0,FRAME.getImage("star"), Math.random()*0.5+0.2);
+		this.posx = Math.random()*SUN_RADIUS*3 - SUN_RADIUS*1.5;
+		this.posy = -SUN_RADIUS - Math.random()*100;
+		
+		this.alpha = 1.0;
+		this.extraX = 0;
+		this.extraY = 0;
+		this.extraRot = 0;
+		this.rotDegree = Math.random() * 1 - 0.5;
+		
+		//the values we are sin'ing
+		this.xCycler = 3*Math.random()*Math.PI*2;
+		this.yCycler = 3*Math.random()*Math.PI*2;
+		this.rotCycler = Math.random()*Math.PI*2;
+		this.alphaCycler = Math.random()*Math.PI*2;
+	}
+	update() {
+		this.x = (-FRAME.x + window.innerWidth/2)/FRAME.scaleX + this.posx;
+		this.y = (-FRAME.x + window.innerHeight/2)/FRAME.scaleY + this.posy;
+		
+		this.xCycler += 0.01;
+		this.yCycler += 0.01;
+		this.rotCycler += 0.01;
+		this.alphaCycler += 0.01;
+		
+		//harmonic motion using sin function
+		this.alpha = Math.abs(Math.sin(this.alphaCycler))+0.2;
+		this.extraX = 5*Math.sin(this.xCycler);
+		this.extraY = 5*Math.sin(this.yCycler);
+		this.rotation = this.rotDegree*Math.sin(this.rotCycler);
+	}
+	render() {
+		this.ctx.globalAlpha = this.alpha;
+		this.ctx.drawImage(this.image, -this.width/2+this.extraX, -this.height/2+this.extraY, this.width, this.height);
+		this.ctx.globalAlpha = 1.0;
+	}
+}
+
+class Line extends Actor {
+	constructor() {
+		super(0,SUN_RADIUS);
+		this.topWidth = 0;
+		this.bottomWidth = 0;
+		this.height = 20;
+		this.speed = 1;
+	}
+	update() {
+		//decrease speed, height, and y position
+		this.y -= this.speed;
+		this.height -= 0.055;
+		this.speed += (0 - this.speed) * 0.001;
+		if (this.y < -SUN_RADIUS) this.dead = true;//this.dead is a thing in the Collection class...
+		
+		//top and bottom of line has to have different widths
+		this.topWidth = 2*Math.sqrt(Math.pow(SUN_RADIUS,2) - Math.pow(this.y-this.height/2,2));
+		this.bottomWidth = 2*Math.sqrt(Math.pow(SUN_RADIUS,2) - Math.pow(this.y+this.height/2,2));
+	}
+	render() {
+		this.ctx.fillStyle = "#222";
+		this.ctx.beginPath();
+		this.ctx.moveTo(-this.topWidth/2, -this.height/2);
+		this.ctx.lineTo(this.topWidth/2, -this.height/2);
+		this.ctx.lineTo(this.bottomWidth/2, this.height/2);
+		this.ctx.lineTo(-this.bottomWidth/2, this.height/2);
+		this.ctx.closePath();
+		this.ctx.fill();
+	}
+}
+
+class Sun extends Actor {
+	constructor() {
+		super();
+		this.rad = 0;
+		this.lines = new Collection();
+		this.linesTimer = 0;
+		
+		this.extras = [];
+		this.cyclers = [];
+		for (var i = 0; i < 3; i++) {
+			this.extras[i] = 0;
+			this.cyclers[i] = Math.random()*2*Math.PI;
+		}
+	}
+	update() {
+		this.x = (-FRAME.x + window.innerWidth/2)/FRAME.scaleX;
+		this.y = (-FRAME.y + window.innerHeight/2)/FRAME.scaleY;
+		this.lines.update();
+		this.rad += (SUN_RADIUS - this.rad) * 0.2;
+		
+		//harmonic motion
+		for (var i = 0; i < 3; i++) {
+			this.cyclers[i] += 0.02;
+			this.extras[i] = 5*Math.sin(this.cyclers[i]);
+		}
+		
+		//countdown to add new line
+		this.linesTimer -= 1;
+		if (this.linesTimer < 0) {
+			this.linesTimer = 60;
+			this.lines.add(new Line());
+		}
+	}
+	render() {
+		//shadows behind sun
+		this.ctx.fillStyle = "rgba(254,109,176,0.2)";
+		this.ctx.beginPath();
+		this.ctx.arc(0,0,this.rad+10+this.extras[0],0,2*Math.PI);
+		this.ctx.fill();
+		this.ctx.fillStyle = "rgba(254,109,176,0.1)";
+		this.ctx.beginPath();
+		this.ctx.arc(0,0,this.rad+23+this.extras[1],0,2*Math.PI);
+		this.ctx.fill();
+		this.ctx.fillStyle = "rgba(254,109,176,0.05)";
+		this.ctx.beginPath();
+		this.ctx.arc(0,0,this.rad+40+this.extras[2],0,2*Math.PI);
+		this.ctx.fill();
+		
+		//actual sun
+		var gradient = this.ctx.createLinearGradient(0,-this.rad,0,this.rad);
+		gradient.addColorStop(0,"rgb(255,239,142)");
+		gradient.addColorStop(1,"rgb(254,109,176)");
+		this.ctx.fillStyle = gradient;
+		this.ctx.beginPath();
+		this.ctx.arc(0,0,this.rad,0,2*Math.PI);
+		this.ctx.fill();
+		
+		//lines
+		this.lines.draw();
+		
+		//gradient above lines
+		var grd = this.ctx.createRadialGradient(0, 0, SUN_RADIUS/3, 0, 0, SUN_RADIUS);
+		grd.addColorStop(0, 'rgba(0,0,0,0)');
+		grd.addColorStop(1, 'rgba(254,109,176,0.15)');
+		this.ctx.fillStyle = grd;
+		this.ctx.beginPath();
+		this.ctx.arc(0,0,this.rad,0,2*Math.PI);
+		this.ctx.fill();
+	}
+}
+
+class LoadingBar extends Actor {
+	constructor() {
+		super();
+		this.progress = 0;//we tween this value to actual loading progress so it looks nice
+		this.loadingText = new Text(0,100,"Loading 0%","Denk One","#00ffd5",32,"center");//x, y, text, font family...
+		
+		//harmonic motion arrays
+		this.extras = [];
+		this.cyclers = [];
+		for (var i = 0; i < NUM_BARS; i++) {
+			this.extras.push(0);
+			this.cyclers.push(Math.random()*2*Math.PI);
+		}
+		
+	}
+	update() {
+		this.x = (-FRAME.x + window.innerWidth/2)/FRAME.scaleX;
+		this.y = (-FRAME.y + window.innerHeight/2)/FRAME.scaleY + 210;
+		
+		//harmonic motion for bars
+		for (var i = 0; i < NUM_BARS; i++) {
+			this.cyclers[i] += 0.05;
+			this.extras[i] = 5*Math.sin(this.cyclers[i]);
+		}
+		
+		//lerp progress variable closer to actual progress
+		this.progress += (loadingProgress - this.progress) * 0.1;
+		if (Math.abs(this.progress - loadingProgress) < 0.25)
+			this.progress = loadingProgress;
+		this.loadingText.text = "Loading " + Math.floor(this.progress) + "%";
+	}
+	render() {
+		this.loadingText.draw();
+		this.ctx.lineCap = "round";
+		//drawing all the lines w/ varying lengths, colors, heights
+		for (var i = 0; i < NUM_BARS; i++) {
+			this.ctx.lineWidth = 10-i;
+			var alpha = 1.0-i*0.15;
+			this.ctx.strokeStyle = "rgba(0,255,213,"+alpha+")";
+			this.ctx.beginPath();
+			this.ctx.moveTo((-this.progress/100)*(LOADING_BAR_WIDTH/2)-this.extras[i], (20-i)*i);
+			this.ctx.lineTo((this.progress/100)*(LOADING_BAR_WIDTH/2)+this.extras[i], (20-i)*i);
+			this.ctx.stroke();
+		}
+	}
+}
+
+window.onload = function() {
+	FRAME.init(1000,1000,document.getElementById("canvas"));
+	
+	//instantiating our objects
+	sun = new Sun();
+	logo = new ImageActor(0,0,FRAME.getImage("logo"));
+	logo.width *= 0.7;//might want to change scale
+	logo.height *= 0.7;
+	starCollection = new Collection();
+	for (var i = 0; i < NUM_STARS; i++) starCollection.add(new Star());
+	bar = new LoadingBar();
+	
+	main();
+}
+
+function main() {
+	FRAME.clearScreen();
+	
+	//update crap
+	logo.x = (-FRAME.x + window.innerWidth/2)/FRAME.scaleX;
+	logo.y = (-FRAME.y + window.innerHeight/2)/FRAME.scaleY + 40;
+	sun.update();
+	starCollection.update();
+	bar.update();
+	
+	//draw crap
+	sun.draw();
+	logo.draw();
+	starCollection.draw();
+	bar.draw();
+	
+	//pretend to load something
+	addLoadingProgress(0.3);
+	if (getLoadingProgress() > 100)
+		setLoadingProgress(100);
+	
+	requestFrame(main);
+}
+</script>
+</body>
