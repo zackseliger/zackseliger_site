@@ -193,8 +193,10 @@
 			//console.log(player.x - prevPos);
 		
 		if (player !== undefined) {
-			FRAME.x += ((-player.x * FRAME.scaleX + window.innerWidth / 2) - FRAME.x) * 0.1;
-			FRAME.y += ((-player.y * FRAME.scaleY + window.innerHeight / 2) - FRAME.y) * 0.1;
+			//FRAME.x += ((-player.x * FRAME.scaleX + window.innerWidth / 2) - FRAME.x) * 0.1;
+			//FRAME.y += ((-player.y * FRAME.scaleY + window.innerHeight / 2) - FRAME.y) * 0.1;
+			FRAME.x = -player.x*FRAME.scaleX + window.innerWidth/2;
+			FRAME.y = -player.y*FRAME.scaleY + window.innerHeight/2;
 		}
 		
 		collection.update();
