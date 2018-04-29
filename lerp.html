@@ -1,6 +1,5 @@
 <html>
 <head>
-	<script src="two.js"></script>
 	<title>Buuuuble.io</title>
 	<meta name="apple-mobile-web-app-capable" content="yes">
 	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
@@ -14,6 +13,7 @@
 </head>
 <body height="100%" style="overflow: hidden">
 	<canvas id="canvas" width="0" height="0" style="position: absolute; background-color: #FFFFFF;">get html5</canvas>
+	<script src="frame.js"></script>
 	
 	<div id="startGUI">
 	<div id="cover" style="position: absolute; top: 0; left: 0; height:100%; width:100%; background-color: #333; opacity: 0.2;"></div>
@@ -25,36 +25,58 @@
 </body>
 
 <script>
-	var renderer = new TWO.renderer(document.getElementById("canvas"));
-	var keyboard = new TWO.keyboard();
 	var ws;
 	var frames = [];
 	var lerpFrames = [];
-	var t = 1.0;
+	var frameTimes = [];
+	var t = 0.0;
 	var currentTime = Date.now();
 	var prevTime = 0;
 	
-	class Bubble extends TWO.circle {
+	class Bubble extends Actor {
 		constructor(startx, starty, id) {
-			super(startx, starty, 25, "#FFF");
-			this.id = id || -1;
+			super(startx, starty);
 			this.controls = {
-				wDown: false,
-				aDown: false,
-				sDown: false,
-				dDown: false,
+				up: false,
+				left: false,
+				down: false,
+				right: false
 			}
+			this.id = id || -1;
+			this.radius = 25;
+			this.color = "#37C";
+			this.tarx = 0;
+			this.tary = 0;
+		}
+		update() {
+			this.x += (this.tarx - this.x) * 0.1;
+			this.y += (this.tary - this.y) * 0.1;
+		}
+		render() {
+			this.ctx.fillStyle = this.color;
+			this.ctx.beginPath();
+			this.ctx.arc(0, 0, this.radius, 0, 2 * Math.PI, false);
+			this.ctx.fill();
 		}
 	}
 	
-	var scene = new TWO.scene();
-	var bigbubble = new TWO.circle(0, 0, window.innerHeight / 2 * renderer.ratio);
-	var gradient = renderer.ctx.createLinearGradient(-bigbubble.radius, 0, bigbubble.radius, 0);
-	gradient.addColorStop(0, "#FF4446");
-	gradient.addColorStop(0.5, "#EE2246");
-	gradient.addColorStop(1, "#DD0046");
-	bigbubble.color = gradient;
-	var playerid;
+	class BigCircle extends Actor {
+		constructor() {
+			super(0,0);
+			this.gradient = this.ctx.createLinearGradient(-window.innerHeight/2, 0, window.innerHeight/2, 0);
+			this.gradient.addColorStop(0, "#FF4446");
+			this.gradient.addColorStop(0.5, "#EE2246");
+			this.gradient.addColorStop(1, "#DD0046");
+		}
+		render() {
+			this.ctx.fillStyle = this.gradient;
+			this.ctx.beginPath();
+			this.ctx.arc(0, 0, window.innerHeight/2/FRAME.scaleY, 0, 2 * Math.PI, false);
+			this.ctx.fill();
+		}
+	}
+	
+	var playerid = -1;
 	var player;
 	var PLAYERS = [];
 	
@@ -76,39 +98,48 @@
 		return -1;
 	}
 	
+	window.onload = function() {
+		FRAME.init(1920, 1080, document.getElementById("canvas"));
+		
+		collection = new Collection();
+		bigbubble = new BigCircle();
+		
+		main();
+	}
+	
 	function main() {
-		renderer.render(scene);
+		FRAME.clearScreen();
 		prevTime = currentTime;
 		currentTime = Date.now();
 		
 		player = PLAYERS[indexFromId(PLAYERS, playerid)];
 		
-		if (player != undefined) {
+		if (player !== undefined) {
 			//update client stuff for server
 			var prevControls = JSON.stringify(player.controls);
 			if (keyboard[87] == true) {
-				player.controls.wDown = true;
+				player.controls.up = true;
 			}
 			else {
-				player.controls.wDown = false;
+				player.controls.up = false;
 			}
 			if (keyboard[65] == true) {
-				player.controls.aDown = true;
+				player.controls.left = true;
 			}
 			else {
-				player.controls.aDown = false;
+				player.controls.left = false;
 			}
 			if (keyboard[83] == true) {
-				player.controls.sDown = true;
+				player.controls.down = true;
 			}
 			else {
-				player.controls.sDown = false;
+				player.controls.down = false;
 			}
 			if (keyboard[68] == true) {
-				player.controls.dDown = true;
+				player.controls.right = true;
 			}
 			else {
-				player.controls.dDown = false;
+				player.controls.right = false;
 			}
 			//send info to server if controls changed
 			if (prevControls !== JSON.stringify(player.controls)) {
@@ -116,36 +147,74 @@
 			}
 		}
 		
+		if (player !== undefined)
+			prevPos = player.x;
+		
 		//lerp
 		if (lerpFrames[0] != undefined && lerpFrames[1] != undefined) {
-			for (var i = 0; i < lerpFrames[0].length ||	i < lerpFrames[1].length; i++) {
-				if (lerpFrames[0][i].id == lerpFrames[1][i].id && lerpFrames[0][i].id != undefined) {
-					if (indexFromId(PLAYERS, lerpFrames[0][i].id) == -1) {
-						PLAYERS.push(new Bubble(lerpFrames[0][i].x, lerpFrames[0][i].y));
-						PLAYERS[PLAYERS.length - 1].id = lerpFrames[0][i].id;
-						scene.add(PLAYERS[PLAYERS.length - 1]);
+			for (var i = 0; i < lerpFrames[0].length; i++) {
+				if (indexFromId(PLAYERS, lerpFrames[0][i].id) == -1) {
+					PLAYERS.push(new Bubble(lerpFrames[0][i].x, lerpFrames[0][i].y));
+					PLAYERS[PLAYERS.length - 1].id = lerpFrames[0][i].id;
+					collection.add(PLAYERS[PLAYERS.length - 1]);
+				}
+				
+				var playerIndex = indexFromId(PLAYERS, lerpFrames[0][i].id);
+				var lerpIndex = -1;
+				for (var j = 0; j < lerpFrames[1].length; j++) {
+					if (lerpFrames[0][i].id == lerpFrames[1][j].id) {
+						lerpIndex = j;
+						break;
 					}
-					var index = indexFromId(PLAYERS, lerpFrames[0][i].id);
-					PLAYERS[index].position.x = (1-t) * lerpFrames[0][i].position.x + t * lerpFrames[1][i].position.x;
-					PLAYERS[index].position.y = (1-t) * lerpFrames[0][i].position.y + t * lerpFrames[1][i].position.y;
+				}
+				
+				if (lerpIndex != -1) {
+					PLAYERS[playerIndex].tarx = (1-t) * lerpFrames[0][i].position.x + t * lerpFrames[1][lerpIndex].position.x;
+					PLAYERS[playerIndex].tary = (1-t) * lerpFrames[0][i].position.y + t * lerpFrames[1][lerpIndex].position.y;
+				}
+				else if (playerIndex != -1) {
+					PLAYERS.splice(playerIndex, 1);
 				}
 			}
+			
+			var tick = (currentTime-prevTime) / (frameTimes[1] - frameTimes[0]);
+			t += tick;
 		}
-		t += 1/3.0;
-		if (t > 1.0) t = 1.0;
+		if (t >= 1.0) {
+			while (lerpFrames.length > 2) {
+				lerpFrames.splice(0, 1);
+				frameTimes.splice(0, 1);
+				t -= 1.0;
+			}
+			if (lerpFrames.length < 2) t = 1.0;
+		}
+		
+		//if (player !== undefined)
+			//console.log(player.x - prevPos);
+		
+		if (player !== undefined) {
+			FRAME.x += ((-player.x * FRAME.scaleX + window.innerWidth / 2) - FRAME.x) * 0.1;
+			FRAME.y += ((-player.y * FRAME.scaleY + window.innerHeight / 2) - FRAME.y) * 0.1;
+		}
+		
+		collection.update();
+		collection.draw();
 		
 		requestFrame(main);
 	}
 	
 	function resetGame() {
-		scene.clear();
+		collection.clear();
 		PLAYERS = [];
 		
-		scene.add(bigbubble);
+		if (bigbubble != undefined)
+			collection.add(bigbubble);
 	}
 	
 	function startGame() {
 		var ip = (getParameterByName("ip") == null) ? "wss://buuuuble.herokuapp.com/" : getParameterByName("ip");
+		keyboard = new Keyboard();
+		//var ip = "ws://localhost:8080";
 		ws = new WebSocket(ip);
 		
 		ws.onopen = function() {
@@ -157,20 +226,15 @@
 		}
 		ws.onmessage = function(m) {
 			var message = m.data;
-			var parsedMessage = JSON.parse(message.substring(1));
+			var parsedMessage = JSON.parse(message);
 			//update
-			if (message.startsWith('u')) {
-				lerpFrames[0] = lerpFrames[1];
-				lerpFrames[1] = parsedMessage;
-				t = 0;
+			if (parsedMessage.t == 'u') {
+				lerpFrames.push(parsedMessage.players);
+				frameTimes.push(parsedMessage.tme);
 			}
-			//add player
-			/*else if (message.startsWith('a')) {
-				PLAYERS.set(parsedMessage[0], new Player(parsedMessage[1].position.x, parsedMessage[1].position.y));
-			}*/
 			//get id
-			else if (message.startsWith('i')) {
-				playerid = message.substring(1);
+			else if (parsedMessage.t == 'i') {
+				playerid = parsedMessage.id;
 			}
 		}
 		ws.onclose = function() {
@@ -180,10 +244,6 @@
 		document.getElementById("startGUI").style.visibility = "hidden";
 	}
 	
-	function handleResize(e) {
-		bigbubble.radius = window.innerHeight / 2 * renderer.ratio;
-	}
-	document.addEventListener("resize", handleResize);
 	function getParameterByName(name, url) {
 		if (!url) {
 		url = window.location.href;
