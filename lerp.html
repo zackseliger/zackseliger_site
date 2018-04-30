@@ -32,6 +32,8 @@
 	var t = 0.0;
 	var currentTime = Date.now();
 	var prevTime = 0;
+	var delta = 0;
+	var framerate = (1.0/60) * 1000;
 	
 	class Bubble extends Actor {
 		constructor(startx, starty, id) {
@@ -45,12 +47,33 @@
 			this.id = id || -1;
 			this.radius = 25;
 			this.color = "#37C";
+			
+			this.extrax = 0;
+			this.extray = 0;
 			this.tarx = 0;
 			this.tary = 0;
 		}
 		update() {
-			this.x += (this.tarx - this.x) * 0.1;
-			this.y += (this.tary - this.y) * 0.1;
+			if (playerid == this.id) {
+				this.extrax *= 0.92;
+				this.extray *= 0.92;
+				
+				if (this.controls.left) {
+					this.extrax += (-100 - this.extrax) * 0.1;
+				}
+				if (this.controls.right) {
+					this.extrax += (100 - this.extrax) * 0.1;
+				}
+				if (this.controls.up) {
+					this.extray += (-100 - this.extray) * 0.1;
+				}
+				if (this.controls.down) {
+					this.extray += (100 - this.extray) * 0.1;
+				}
+			}
+		
+			this.x += (this.tarx+this.extrax - this.x) * 0.1;
+			this.y += (this.tary+this.extray - this.y) * 0.1;
 		}
 		render() {
 			this.ctx.fillStyle = this.color;
@@ -111,6 +134,7 @@
 		FRAME.clearScreen();
 		prevTime = currentTime;
 		currentTime = Date.now();
+		delta = (currentTime-prevTime) / framerate;
 		
 		player = PLAYERS[indexFromId(PLAYERS, playerid)];
 		
@@ -146,9 +170,6 @@
 				ws.send('c' + JSON.stringify([playerid, player.controls]));
 			}
 		}
-		
-		if (player !== undefined)
-			prevPos = player.x;
 		
 		//lerp
 		if (lerpFrames[0] != undefined && lerpFrames[1] != undefined) {
@@ -189,12 +210,7 @@
 			if (lerpFrames.length < 2) t = 1.0;
 		}
 		
-		//if (player !== undefined)
-			//console.log(player.x - prevPos);
-		
 		if (player !== undefined) {
-			//FRAME.x += ((-player.x * FRAME.scaleX + window.innerWidth / 2) - FRAME.x) * 0.1;
-			//FRAME.y += ((-player.y * FRAME.scaleY + window.innerHeight / 2) - FRAME.y) * 0.1;
 			FRAME.x = -player.x*FRAME.scaleX + window.innerWidth/2;
 			FRAME.y = -player.y*FRAME.scaleY + window.innerHeight/2;
 		}
