@@ -319,7 +319,7 @@ window.onload = function() {
 	//networking
 	playerID = -1;
 	player = undefined;
-	GLUE.init("wss://match3.herokuapp.com");
+	GLUE.init("wss://match-3---.herokuapp.com");
 	GLUE.defineObject("g", Grid);
 	
 	//types of packets
