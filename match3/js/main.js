@@ -5,6 +5,7 @@ var TILE_SPACING = 200;
 var TILE_SIZE = 140;
 var ROWS = 8;
 var COLS = 8;
+var playing = false;
 FRAME.loadImage("assets/1.png", "tile1");
 FRAME.loadImage("assets/2.png", "tile2");
 FRAME.loadImage("assets/3.png", "tile3");
@@ -27,20 +28,6 @@ function getYCoordValue(y) {
 	return (y*TILE_SPACING-(TILE_SPACING/2*(COLS-1)));
 }
 
-class EmptyVisual extends GameObj {
-	constructor() {
-		super();
-		this.position = {x: 0, y: 0};
-		this.position.clone = function() {
-			return new network.Vector2(this.x, this.y);
-		}
-		this.width = 0;
-		this.height = 0;
-	}
-	update() {}
-	render() {}
-}
-
 class Leaderboard extends Actor {
 	constructor() {
 		super();
@@ -56,7 +43,7 @@ class Leaderboard extends Actor {
 		this.players = players;
 		this.playersText = [];
 		for (var i = 0; i < Math.min(5,this.players.length); i++) {
-			this.playersText[i] = new Text(0, 0+i*60, "", "Arial", "#000", 42, "right");
+			this.playersText[i] = new Text(0, 0+i*60, "", "Arial", "#FFF", 42, "right");
 			this.playersText[i].text = (i+1)+"."+this.players[i].name+" - "+this.players[i].score;
 		}
 	}
@@ -64,7 +51,7 @@ class Leaderboard extends Actor {
 
 class Tile extends Actor {
 	constructor(x,y,type=-1) {
-		super(x, -GAME_HEIGHT*2);
+		super(0, -GAME_HEIGHT*2);
 		this.alpha = 1.0;
 		this.type = type;
 		this.moused = false;
@@ -75,6 +62,7 @@ class Tile extends Actor {
 		this.height = this.normalHeight;
 		this.xOffset = 0;
 		this.yOffset = 0;
+		this.parent = null;
 		this.targetX = getXIndexValue(x);
 		this.targetY = getYIndexValue(y);
 	}
@@ -88,7 +76,7 @@ class Tile extends Actor {
 			this.width += (this.normalWidth - this.width) * 0.1;
 			this.height += (this.normalHeight - this.height) * 0.1;
 		}
-		this.x += (getXCoordValue(this.targetX)+this.xOffset - this.x) * 0.1;
+		this.x += (getXCoordValue(this.targetX)+this.xOffset+this.parent.x - this.x) * 0.1;
 		this.y += (getYCoordValue(this.targetY)+this.yOffset - this.y) * 0.1;
 	}
 	render() {
@@ -107,15 +95,54 @@ class Tile extends Actor {
 	}
 }
 
+class TimerBar extends Actor {
+	constructor(x, y) {
+		super(x, y);
+		this.width = 1000;
+		this.height = 50;
+		this.fillness = 1.0;
+		this.targetValue = 1.0;
+	}
+	update() {
+		this.fillness += (this.targetValue - this.fillness) * 0.1;
+	}
+	render() {
+		this.ctx.lineWidth = this.height;
+		this.ctx.lineCap = "round";
+		
+		//shadow
+		this.ctx.strokeStyle = "#333";
+		this.ctx.beginPath();
+		this.ctx.moveTo(-this.width/2,0);
+		this.ctx.lineTo(this.width/2,0);
+		this.ctx.stroke();
+		this.ctx.closePath();
+		
+		//bar
+		this.ctx.strokeStyle = "#FE2253";
+		this.ctx.beginPath();
+		this.ctx.moveTo(-this.width/2*this.fillness,0);
+		this.ctx.lineTo(this.width/2*this.fillness,0);
+		this.ctx.stroke();
+		this.ctx.closePath();
+	}
+	changeValue(perc) {
+		if (perc < 0) return;
+		this.targetValue = perc;
+	}
+}
+
 class Grid extends Actor {
-	constructor(rows, cols) {
+	constructor() {
 		super();
 		this.score = 0;
 		this.name = "";
-		this.rows = rows;
-		this.cols = cols;
+		this.rows = 8;
+		this.cols = 8;
 		this.selectedTile = null;
+		this.canSwap = true;
 		this.tiles = [];
+		this.timer = 60.0;
 		for (var x = 0; x < this.cols; x++) {
 			this.tiles.push([]);
 			this.tiles.push([]);
@@ -124,8 +151,24 @@ class Grid extends Actor {
 				this.addTile(x, y, -1);
 			}
 		}
+		this.gridBack = new ImageActor(0,0,FRAME.getImage("grid"),3.13);
+		this.bar = new TimerBar(0,0);
+		this.timerText = new Text(0,0,"Score: 0","Arial","#FFF",50, "center");
 	}
 	update() {
+		if (this.netObj.tiles != undefined) {
+			this.addTiles(this.netObj.tiles);
+			this.netObj.tiles = undefined;
+		}
+		
+		//timer stuff, changing text and bar
+		this.timer -= GLUE.realTime/1000;
+		this.timerText.text = Math.floor(this.timer*10)/10;
+		this.timerText.y = -this.gridBack.height/2 - 100;
+		this.bar.y = -this.gridBack.height/2 - 68;
+		this.bar.changeValue(this.timer/60.0);
+		this.bar.update();
+		
 		//collapse tiles and find selected tile
 		for (var x = 0; x < this.cols; x++) {
 			for (var y = 0; y < this.rows; y++) {
@@ -134,6 +177,8 @@ class Grid extends Actor {
 					var respawnType = this.tiles[x][y].respawnType;
 					this.tiles[x].splice(y, 1);
 					this.tiles[x].unshift(new Tile(getXCoordValue(x),0,respawnType));
+					this.tiles[x][0].parent = this;
+					this.tiles[x][0].x = this.x;
 					this.tiles[x][0].targetX = x;
 					this.tiles[x][0].targetY = 0;
 					for (var x2 = 0; x2 < this.cols; x2++) {
@@ -143,7 +188,7 @@ class Grid extends Actor {
 						}
 					}
 				}
-				if (this.selectedTile == null && checkCollision(mouse, this.tiles[x][y])) {
+				if (player == this && this.selectedTile == null && checkCollision(mouse, this.tiles[x][y])) {
 					if (mouse.clicking == true) {
 						this.selectedTile = this.tiles[x][y];
 					}
@@ -152,8 +197,12 @@ class Grid extends Actor {
 			}
 		}
 		
+		if (this !== player) {
+			return;
+		}
+		
 		//swap selected tile
-		if (mouse.clicking == false && this.selectedTile != null) {
+		if (mouse.clicking == false && this.selectedTile != null && this.canSwap) {
 			if (Math.abs(this.selectedTile.xOffset) + Math.abs(this.selectedTile.yOffset) > TILE_SPACING/2) {
 				var xIndex = this.selectedTile.targetX;
 				var yIndex = this.selectedTile.targetY;
@@ -168,7 +217,8 @@ class Grid extends Actor {
 				this.selectedTile.targetX = targetX;
 				this.selectedTile.targetY = targetY;
 				
-				network.currentPackets.push({type: "swap", selectedTile: {x:xIndex, y:yIndex}, swapTile: {x:targetX, y:targetY}});
+				GLUE.sendPacket("swap", {selectedTile: {x:xIndex, y:yIndex}, swapTile: {x:targetX, y:targetY}});
+				this.canSwap = false;
 			}
 			
 			this.selectedTile.offset(0,0);
@@ -191,16 +241,35 @@ class Grid extends Actor {
 				if (mouse.y - this.selectedTile.y+this.selectedTile.yOffset < 0) dis *= -1;
 				this.selectedTile.offset(0, dis);
 			}
-			console.log(this.selectedTile.xOffset+", "+this.selectedTile.yOffset);
+			
+			//making sure tiles on edges can't be dragged off
+			if (this.selectedTile.targetX == 0 && this.selectedTile.xOffset < 0) {
+				this.selectedTile.xOffset = 0;
+			}
+			else if (this.selectedTile.targetX == COLS-1 && this.selectedTile.xOffset > 0) {
+				this.selectedTile.xOffset = 0;
+			}
+			if (this.selectedTile.targetY == 0 && this.selectedTile.yOffset < 0) {
+				this.selectedTile.yOffset = 0;
+			}
+			else if (this.selectedTile.targetY == ROWS-1 && this.selectedTile.yOffset > 0) {
+				this.selectedTile.yOffset = 0;
+			}
 		}
 	}
 	draw() {
+		super.draw();
 		for (var x = 0; x < this.cols; x++) {
 			for (var y = 0; y < this.rows; y++) {
 				this.tiles[x][y].draw();
 			}
 		}
 		if (this.selectedTile != null) this.selectedTile.draw();
+	}
+	render() {
+		this.bar.draw();
+		this.timerText.draw();
+		this.gridBack.draw();
 	}
 	addTiles(tiles) {
 		for (var i = 0; i < tiles.length; i++) {
@@ -210,6 +279,8 @@ class Grid extends Actor {
 	}
 	addTile(x, y, type) {
 		this.tiles[x][y] = new Tile(getXCoordValue(x), getYCoordValue(y), type);
+		this.tiles[x][y].parent = this;
+		this.tiles[x][y].x = this.x;
 	}
 	swapTiles(tile1, tile2) {
 		this.tiles[tile1.x][tile1.y].targetX = tile2.x;
@@ -220,6 +291,7 @@ class Grid extends Actor {
 		for (var i = 0; i < tiles.length; i++) {
 			this.tiles[tiles[i].targetX][tiles[i].targetY] = tiles[i];
 		}
+		this.canSwap = true;
 	}
 	getTilesArray() {
 		var arr = [];
@@ -232,95 +304,98 @@ class Grid extends Actor {
 	}
 }
 
-//load images
 window.onload = function() {
-	network = new gameIO();
 	FRAME.smoothing = true;
 	FRAME.init(GAME_WIDTH, GAME_WIDTH, document.getElementById("canvas"));
 	keyboard = new Keyboard();
 	mouse = new Mouse();
 	leaderboard = new Leaderboard();
 	
-	nameText = new Text(0,-900, "", "Arial", "#222", 50, "center");
-	scoreText = new Text(-GAME_WIDTH/2+175,GAME_HEIGHT-225,"Score: 0","Arial","#222",50);
-	var gridActor = new ImageActor(0,0,FRAME.getImage("grid"),3.13);
+	scoreText = new Text(-GAME_WIDTH/2+175,GAME_HEIGHT-225,"Score: 0","Arial","#FFF",50, "center");
 	mainCollection = new Collection();
 	mainCollection.add(scoreText);
-	mainCollection.add(nameText);
-	mainCollection.add(gridActor);
 	mainCollection.add(leaderboard);
 	
-	//types of packets
-	network.addPacketType("addTiles", function(packet) {
-		var obj = network.getObj(packet.id);
-		obj.grid.addTiles(packet.tiles);
-	});
-	network.addPacketType("moveTiles", function(packet) {
-		
-	});
-	network.addPacketType("swapTiles", function(packet) {
-		var obj = network.getObj(packet.id);
-		obj.grid.swapTiles(packet.tile1, packet.tile2);
-	});
-	network.addPacketType("changeScore", function(packet) {
-		var obj = network.getObj(packet.id);
-		obj.grid.score = packet.score;
-		if (network.me.id == packet.id) {
-			scoreText.text = "Score: " + obj.grid.score;
-		}
-	});
-	network.addPacketType("leaderboard", function(packet) {
-		leaderboard.putPlayers(packet.players);
-	});
+	//networking
+	playerID = -1;
+	player = undefined;
+	GLUE.init("wss://match3.herokuapp.com");
+	GLUE.defineObject("g", Grid);
 	
-	//types of objects
-	network.addType(
-		"player",
-		function(obj, packet) {
-			obj.visual = new EmptyVisual();
-			obj.grid = new Grid(packet.grid.rows, packet.grid.cols);
-			obj.grid.name = packet.name;
-			obj.grid.addTiles(packet.tiles);
-			mainCollection.add(obj.grid);
-		}, undefined, undefined,
-		function (obj, packet) {
-			mainCollection.remove(obj.grid);
+	//types of packets
+	GLUE.addPacketFunction("addTiles", function(pack) {
+		var obj = GLUE.getInstanceFromID(pack.id);
+		obj.addTiles(pack.tiles);
+	});
+	GLUE.addPacketFunction("swapTiles", function(pack) {
+		var obj = GLUE.getInstanceFromID(pack.id);
+		obj.swapTiles(pack.tile1, pack.tile2);
+	});
+	GLUE.addPacketFunction("changeScores", function(pack) {
+		var obj = GLUE.getInstanceFromID(pack.id);
+		obj.score = pack.score;
+		if (pack.id == playerID) {
+			scoreText.text = "Score: " + pack.score;
 		}
-	);
+	});
+	GLUE.addPacketFunction("leaderboard", function(pack) {
+		leaderboard.putPlayers(pack.players);
+		for (var i = 0; i < pack.players.length; i++) {
+			var obj = GLUE.getInstanceFromID(pack.players[i].id);
+			obj.x = 1920 * (pack.players.length - 1 - i);
+		}
+	});
+	GLUE.addPacketFunction("i", function(pack) {
+		playerID = pack.id;
+		player = GLUE.getInstanceFromID(playerID);
+	});
+	GLUE.addPacketFunction("d", function(pack) {
+		if (playerID == pack.id) {
+			player = null;
+			playerID = -1;
+			document.getElementById("preGameGUI").style.visibility = "visible";
+			scoreText.text = "";
+			playing = false;
+			leaderboard.putPlayers([]);
+		}
+	});
+	GLUE.addPacketFunction("t", function(pack) {
+		var obj = GLUE.getInstanceFromID(pack.id);
+		obj.timer = pack.time;
+	});
 }
 
 function main() {
 	FRAME.clearScreen();
 	mouse.update();
 	
-	leaderboard.x = window.innerWidth - 50;
+	leaderboard.x = (-FRAME.x + window.innerWidth - 200)/FRAME.scaleX;
 	leaderboard.y = -window.innerHeight + 20;
+	scoreText.x = (-FRAME.x + window.innerWidth/2)/FRAME.scaleX;
 	
-	for (var i = 0; i < network.objects.length; i++) {
-		if (network.me.id != -1 && network.objects[i].id != network.me.id) {
-			mainCollection.remove(network.objects[i].grid);
-		}
+	for (var i = 0; i < GLUE.instances.length; i++) {
+		GLUE.instances[i].update();
+		GLUE.instances[i].draw();
 	}
 	
-	//update/draw things and camera
-	mainCollection.update(0);
-	mainCollection.draw();
-	FRAME.x = window.innerWidth/2;
+	//gui stuff
+	//FRAME.x = window.innerWidth/2;
+	if (player !== undefined && player !== null) {
+		FRAME.x += (-player.x * FRAME.scaleX + window.innerWidth/2 - FRAME.x) * 0.05;
+	}
 	FRAME.y = window.innerHeight/2;
+	mainCollection.update();
+	mainCollection.draw();
 	
-	network.update();
-	requestFrame(main);
+	GLUE.update();
+	if (playing)
+		requestFrame(main);
 }
 
 function startGame() {
 	document.getElementById("preGameGUI").style.visibility = "hidden";
-	network.createSocket("wss://match-3---.herokuapp.com");
-	//network.createSocket("ws://localhost:5000");
-	network.currentPackets.push({
-		type: "playerJoin",
-		name: document.getElementById("name").value
-	});
-	nameText.text = document.getElementById("name").value;
+	GLUE.sendPacket("j", {name: document.getElementById("name").value});
+	playing = true;
 	main();
 }
 

@@ -4,22 +4,35 @@
 	<style>
 	body {
 		margin: 0;
+		overflow: hidden;
+		background-color: #222;
+		color: #FFF;
 	}
 	#preGameGUI {
 		position: absolute;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+	}
+	input {
+		outline: none;
+		border: none;
 	}
 	</style>
 </head>
 
 <body>
+	<form onsubmit="return false;">
 	<div id="preGameGUI">
-		name: <input id="name" />
+		name: <input id="name" autofocus/>
 		<button onclick="startGame()">Start</button>
 	</div>
+	</form>
 
 	<canvas id="canvas"></canvas>
 	
-	<script src="js/gameIO.js"></script>
+	<script src="js/msgpack.js"></script>
+	<script src="js/glue.js"></script>
 	<script src="js/frame.js"></script>
 	<script src="js/main.js"></script>
 </body>
