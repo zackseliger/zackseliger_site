@@ -11,18 +11,15 @@ var solidTiles = {};
 var projectiles = {};
 var characters = {};
 var sceneManager = {};
-
-//counter things
-var numBees = 0;
-var maxBees = 50;
-var numGhosts = 0;
-var maxGhosts = 3;
+var mousePolygon = {};
+var groundAreaManager = {};
 
 //loading images
 FRAME.loadImage("assets/img/bird_guy/walk1.png", "playerWalk1");
 FRAME.loadImage("assets/img/bird_guy/walk2.png", "playerWalk2");
 FRAME.loadImage("assets/img/mayor/idle1.png", "mayorIdle1");
 FRAME.loadImage("assets/img/mayor/idle2.png", "mayorIdle2");
+
 FRAME.loadImage("assets/img/tiles/road.png", "road1");
 FRAME.loadImage("assets/img/tiles/road2.png", "road2");
 FRAME.loadImage("assets/img/tiles/rock1.png", "rock1");
@@ -33,21 +30,34 @@ FRAME.loadImage("assets/img/tiles/shrub2.png", "shrub2");
 FRAME.loadImage("assets/img/tiles/shrub3.png", "shrub3");
 FRAME.loadImage("assets/img/tiles/shrub4.png", "shrub4");
 FRAME.loadImage("assets/img/tiles/fence.png", "fence");
+FRAME.loadImage("assets/img/coin.png", "coin");
+
 FRAME.loadImage("assets/img/weapons/sword/idle.png", "sword");
 FRAME.loadImage("assets/img/weapons/sword/idleWhite.png", "swordWhite");
 FRAME.loadImage("assets/img/weapons/spear/idle.png", "spear");
 FRAME.loadImage("assets/img/weapons/spear/idleWhite.png", "spearWhite");
-FRAME.loadImage("assets/img/bee.png", "bee");
-FRAME.loadImage("assets/img/beeRed.png", "beeRed");
-FRAME.loadImage("assets/img/ghost1.png", "ghost1");
-FRAME.loadImage("assets/img/ghost2.png", "ghost2");
-FRAME.loadImage("assets/img/fireball.png", "fireball");
-FRAME.loadImage("assets/img/coin.png", "coin");
+FRAME.loadImage("assets/img/armor/1.png", "armor1");
+FRAME.loadImage("assets/img/armor/2.png", "armor2");
+
+FRAME.loadImage("assets/img/enemies/bee.png", "bee");
+FRAME.loadImage("assets/img/enemies/beeRed.png", "beeRed");
+FRAME.loadImage("assets/img/enemies/ghost1.png", "ghost1");
+FRAME.loadImage("assets/img/enemies/ghost2.png", "ghost2");
+FRAME.loadImage("assets/img/enemies/fireball.png", "fireball");
+FRAME.loadImage("assets/img/enemies/spiker.png", "spiker");
+FRAME.loadImage("assets/img/enemies/spike.png", "spike");
+
 FRAME.loadImage("assets/img/floppyDisk.png", "floppyDisk");
 FRAME.loadImage("assets/img/market.png", "market");
 FRAME.loadImage("assets/img/fittingRoom.png", "fittingRoom");
+FRAME.loadImage("assets/img/arena.png", "arena");
+FRAME.loadImage("assets/img/dungeon.png", "dungeon");
+FRAME.loadImage("assets/img/arrow.png", "arrow");
+
 FRAME.loadImage("assets/img/heart.png", "heart");
 FRAME.loadImage("assets/img/heartBlack.png", "heartBlack");
+FRAME.loadImage("assets/img/shield.png", "shield");
+FRAME.loadImage("assets/img/shieldBlack.png", "shieldBlack");
 
 //npc images
 for (var i = 1; i <= 6; i++) {
@@ -147,6 +157,13 @@ function checkSATCollision(poly1, poly2) {
 
 function showTree(tree) {
 	gui.showTree(tree);
+}
+
+//area ground settings
+function initAreaGrounds() {
+	groundAreaManager = new GroundAreaManager();
+	
+	groundAreaManager.addGroundArea(new FirstGroundArea());
 }
 
 //for spawning things

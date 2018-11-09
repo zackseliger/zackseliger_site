@@ -6,12 +6,21 @@ class Enemy extends Actor {
 		this.height = this.image.height*PIXEL_SIZE;
 		this.displayWidth = 0;
 		this.displayHeight = 0;
+		this.isEnemy = true;
 		
 		this.polygon = new Polygon(x,y,this.width/2);
 		this.polygon.addPoint(1,-this.height/this.width);
 		this.polygon.addPoint(1,this.height/this.width);
 		this.polygon.addPoint(-1,this.height/this.width);
 		this.polygon.addPoint(-1,-this.height/this.width);
+		
+		//check for collision SOLID tiles and move on x/y-axis if colliding
+		for (var i = 0; i < solidTiles.objects.length; i++) {
+			if (checkAABBCollision(this, solidTiles.objects[i])) {
+				this.dead = true;
+				return;
+			}
+		}
 	}
 	update() {
 		//lerp to correct size
@@ -46,18 +55,8 @@ class Bee extends Enemy {
 		this.xVel = 0;
 		this.yVel = 0;
 		
-		//check for collision SOLID tiles and move on x/y-axis if colliding
-		for (var i = 0; i < solidTiles.objects.length; i++) {
-			if (checkAABBCollision(this, solidTiles.objects[i])) {
-				this.dead = true;
-				return;
-			}
-		}
-		
 		this.coverImage = FRAME.getImage("beeRed");
 		this.coverAlpha = 0.0;
-		
-		numBees++;
 	}
 	update() {
 		var prevx = this.x;
@@ -113,7 +112,6 @@ class Bee extends Enemy {
 		this.die();
 	}
 	die() {
-		numBees--;
 		this.dead = true;
 		new Coin(this.x, this.y);
 		if (Math.random() < 0.25) {
@@ -127,14 +125,6 @@ class Ghost extends Enemy {
 		super(x, y, FRAME.getImage("ghost2"));
 		
 		this.dying = false;
-		
-		//check for collision SOLID tiles and move on x/y-axis if colliding
-		for (var i = 0; i < solidTiles.objects.length; i++) {
-			if (checkAABBCollision(this, solidTiles.objects[i])) {
-				this.dead = true;
-				return;
-			}
-		}
 		
 		//flicker effect
 		this.alpha = 0.8;
@@ -152,8 +142,6 @@ class Ghost extends Enemy {
 		//for attacking
 		this.target = player;
 		this.shootTimer = 100;
-		
-		numGhosts++;
 	}
 	update() {
 		var prevx = this.x;
@@ -231,10 +219,9 @@ class Ghost extends Enemy {
 		this.dying = true;
 	}
 	die() {
-		numGhosts--;
 		this.dead = true;
 		
-		var numCoins = Math.floor(Math.random()*2)+3;
+		var numCoins = Math.floor(Math.random()*3)+3;
 		for (var i = 0; i < numCoins; i++) {
 			new Coin(this.x, this.y);
 		}
@@ -282,6 +269,125 @@ class Fireball extends Actor {
 		if (this.harmful && checkSATCollision(this.polygon, this.target.polygon)) {
 			this.target.hurt();
 		}
+	}
+	render() {
+		this.ctx.globalAlpha = this.alpha;
+		this.ctx.drawImage(this.image, -this.width/2, -this.height/2, this.width, this.height);
+		this.ctx.globalAlpha = 1.0;
+	}
+}
+
+class Spiker extends Enemy {
+	constructor(x, y) {
+		super(x, y, FRAME.getImage("spiker"));
+		this.xVel = 0;
+		this.yVel = 0;
+		this.spikeTimer = 0;
+		this.target = player;
+	}
+	update() {
+		var prevx = this.x;
+		var prevy = this.y;
+		
+		this.xVel += Math.random()*0.2 - 0.1;
+		this.yVel += Math.random()*0.2 - 0.1;
+		
+		//move spiker, but move back if colliding with something
+		this.x += this.xVel;
+		for (var i = 0; i < solidTiles.objects.length; i++) {
+			if (checkAABBCollision(this, solidTiles.objects[i])) {
+				this.x = prevx;
+			}
+		}
+		this.y += this.yVel;
+		for (var i = 0; i < solidTiles.objects.length; i++) {
+			if (checkAABBCollision(this, solidTiles.objects[i])) {
+				this.y = prevy;
+			}
+		}
+		this.xVel *= 0.99;
+		this.yVel *= 0.99;
+		
+		if (prevx < this.x) {
+			this.facingRight = true;
+		}
+		else if (prevx > this.x) {
+			this.facingRight = false;
+		}
+		
+		//rotate based on velocity
+		this.rotation = this.xVel/5;
+		
+		//shoot spikes
+		this.spikeTimer++;
+		if (this.spikeTimer >= 75 && Math.abs(this.x - this.target.x) + Math.abs(this.y - this.target.y) < 500) {
+			this.spikeTimer = 0;
+			let angle = 0;
+			for (let i = 0; i < 4; i++) {
+				let x = this.x + Math.cos(this.rotation+angle)*this.width/2;
+				let y = this.y + Math.sin(this.rotation+angle)*this.height/2;
+				projectiles.add(new Spike(x, y, this.rotation+angle, 2, this.target));
+				angle += Math.PI/2;
+			}
+		}
+		
+		super.update();
+	}
+	hurt() {
+		this.die();
+	}
+	die() {
+		this.dead = true;
+		
+		var numCoins = Math.floor(Math.random()*3)+2;
+		for (var i = 0; i < numCoins; i++) {
+			new Coin(this.x, this.y);
+		}
+	}
+}
+
+class Spike extends Actor {
+	constructor(x, y, rot, speed, target) {
+		super(x, y, rot);
+		
+		this.speed = speed;
+		this.target = target;
+		this.image = FRAME.getImage("spike");
+		this.width = PIXEL_SIZE*1.5;
+		this.height = PIXEL_SIZE*1.5;
+		this.alpha = 1.0;
+		this.harmful = true;
+		
+		this.polygon = new Polygon(this.x, this.y, this.width/2);
+		this.polygon.addPoint(1,-this.height/this.width);
+		this.polygon.addPoint(1,this.height/this.width);
+		this.polygon.addPoint(-1,this.height/this.width);
+		this.polygon.addPoint(-1,-this.height/this.width);
+	}
+	update() {
+		this.x += Math.cos(this.rotation)*this.speed;
+		this.y += Math.sin(this.rotation)*this.speed;
+		
+		this.speed *= 0.96;
+		if (this.speed < 1) {
+			this.alpha -= 0.05;
+			if (this.alpha <= 0.6) {
+				this.harmful = false;
+			}
+			if (this.alpha <= 0.0) {
+				this.alpha = 0.0;
+				this.dead = true;
+			}
+		}
+		
+		//damage target
+		if (this.harmful && checkSATCollision(this.polygon, this.target.polygon)) {
+			this.target.hurt();
+		}
+		
+		this.polygon.x = this.x;
+		this.polygon.y = this.y;
+		this.polygon.rotation = this.rotation;
 	}
 	render() {
 		this.ctx.globalAlpha = this.alpha;

@@ -6,9 +6,9 @@ TODO:
 -sounds
 -more lands
 -upgrades
--armor
 -more enemies
 -more weapons
+-menues
 */
 
 class SceneManager {
@@ -46,21 +46,55 @@ class Scene {
 	onUnload() {}
 }
 
+class MainMenuScene extends Scene {
+	constructor(manager) {
+		super(manager);
+		
+		this.mainMenu = new MainMenu();
+		this.menuGroundArea = new GroundAreaManager();
+		this.menuGroundArea.addGroundArea(new FirstGroundArea());
+	}
+	update() {
+		characters.update();
+		
+		this.menuGroundArea.update();
+		this.mainMenu.update();
+	}
+	render() {
+		tiles.draw();
+		solidTiles.draw();
+		characters.draw();
+		this.mainMenu.draw();
+	}
+	onLoad() {
+		tiles.clear();
+		solidTiles.clear();
+		projectiles.clear();
+		characters.clear();
+		
+		groundAreaManager.gotoGroundArea(0);
+		FRAME.x = FRAME.y = 0;
+	}
+}
+
 class MainWorldScene extends Scene {
 	constructor(manager) {
 		super(manager);
 		
 		this.npcs = new Collection();
-		this.npcs.add(new Mayor(200, -100));
-		this.npcs.add(new SaveChar(500, -100));
-		this.npcs.add(new ShopChar(650, -100));
-		this.npcs.add(new InventoryChar(800, -100));
+		//this.npcs.add(new Mayor(200, -100));
+		this.npcs.add(new ArrowLeftChar(50, -100));
+		this.npcs.add(new SaveChar(200, -100));
+		this.npcs.add(new ShopChar(350, -100));
+		this.npcs.add(new InventoryChar(500, -100));
+		this.npcs.add(new ArenaChar(650, -100));
+		this.npcs.add(new ArrowRightChar(800, -100));
 		this.enemies = [];
 	}
 	update() {
 		//moving camera
-		FRAME.x += (-player.x*FRAME.scaleX + window.innerWidth/2 - FRAME.x) * 0.3;
-		FRAME.y += (-player.y*FRAME.scaleY + window.innerHeight/2 - FRAME.y) * 0.3;
+		FRAME.x += (-player.x*FRAME.scaleX - FRAME.x) * 0.3;
+		FRAME.y += (-player.y*FRAME.scaleY - FRAME.y) * 0.3;
 		
 		//colliding with characters
 		for (let character of characters.objects) {
@@ -77,13 +111,7 @@ class MainWorldScene extends Scene {
 			}
 		}
 		
-		//spawning in new guys
-		while (numBees < maxBees) {
-			characters.add(new Bee(Math.random()*2800-900, Math.random()*1800-800));
-		}
-		while (numGhosts < maxGhosts) {
-			characters.add(new Ghost(Math.random()*2800-900, Math.random()*1800-800));
-		}
+		groundAreaManager.update();
 		
 		//update characters and gui
 		tiles.update();
@@ -104,18 +132,8 @@ class MainWorldScene extends Scene {
 		projectiles.clear();
 		characters.clear();
 		
-		//road
-		for (var i = 0; i < 20; i++) {
-			tiles.add(new Tile(false, i*PIXEL_SIZE*8+50, -25, FRAME.getImage("road" + (1 + i%2))));
-		}
-		
-		//rocks
-		makeRandomTiles(Rock,500,0,3000,2000,20,65);
-		//shrubs
-		makeRandomTiles(Shrub,500,0,3000,2000,100,20);
-		
-		//fences
-		makeFenceBox(500,0,3000,2000);
+		//go to/set up first ground area
+		groundAreaManager.gotoGroundArea(0);
 		
 		//add npcs and player
 		characters.add(player);
@@ -127,6 +145,10 @@ class MainWorldScene extends Scene {
 			characters.add(this.enemies[i]);
 		}
 		this.enemies = [];
+		
+		FRAME.x = -player.x*FRAME.scaleX;
+		FRAME.y = -player.y*FRAME.scaleY;
+		gui.catchUp();
 	}
 	onUnload() {
 		for (var i = 0; i < characters.objects.length; i++) {
@@ -180,5 +202,27 @@ class InventoryScene extends Scene {
 	onLoad() {
 		this.inventoryGui.load();
 		this.inventoryGui.update();
+	}
+}
+
+class ArenaMenuScene extends Scene {
+	constructor (manager) {
+		super(manager);
+		
+		this.arenaMenu = new ArenaMenu(player);
+	}
+	update() {
+		this.arenaMenu.update();
+	}
+	render() {
+		tiles.draw();
+		solidTiles.draw();
+		projectiles.draw();
+		characters.draw();
+		
+		this.arenaMenu.draw();
+	}
+	onload() {
+		this.arenaMenu.load();
 	}
 }

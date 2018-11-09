@@ -41,7 +41,7 @@ class Weapon extends Actor {
 			this.strike();
 			
 			for (let i = 0; i < characters.objects.length; i++) {
-				if (this.owner != characters.objects[i] && characters.objects[i].polygon !== undefined) {
+				if (characters.objects[i].isEnemy === true) {
 					if (checkSATCollision(characters.objects[i].polygon, this.polygon)) {
 						characters.objects[i].hurt();
 					}

@@ -12,7 +12,9 @@ class Player extends Actor {
 		this.width = this.image.width * PIXEL_SIZE;
 		this.height = this.image.height * PIXEL_SIZE;
 		this.canMove = true;
+		
 		this.weapon = new Spear(this);
+		this.armor = null;
 		
 		this.polygon = new Polygon(x,y,this.width/2-PIXEL_SIZE/2);
 		this.polygon.addPoint(1,-this.height/this.width);
@@ -23,14 +25,23 @@ class Player extends Actor {
 		this.speed = 4;
 		this.health = 3;
 		this.maxHealth = 3;
+		this.armorHealth = 0;
+		this.maxArmorHealth = 0;
+		this.armorHealthPercentage = 1;
 		this.money = 0;
 		this.exp = 0;
 		
 		//shop stuff
 		this.shopList = new ShopList();
+		this.shopList.setBuyCallback("land", function(item){groundAreaManager.addGroundArea(new item.className())});
 		this.shopList.addItem("weapon", 0, Spear, "Spear");
 		this.shopList.setBought("weapon", "Spear");
 		this.shopList.addItem("weapon", 50, Sword, "Sword");
+		this.shopList.addItem("armor", 50, Leather, "Leather Armor");
+		this.shopList.addItem("armor", 100, GoldArmor, "Gold Armor");
+		this.shopList.addItem("land", 200, SecondGroundArea, "Second Area");
+		this.shopList.makeEquippable("weapon");
+		this.shopList.makeEquippable("armor");
 		
 		//invincibility stuff
 		this.invincible = false;
@@ -104,6 +115,13 @@ class Player extends Actor {
 		if (this.weapon != null) {
 			this.weapon.update();
 		}
+		//armor stuff
+		if (this.armor != null) {
+			this.armor.update();
+			if (this.image != this.idleImage) {
+				this.armor.y += PIXEL_SIZE;
+			}
+		}
 		
 		//invincible handling
 		if (this.invinTimer >= 175) {
@@ -128,22 +146,35 @@ class Player extends Actor {
 	}
 	draw() {
 		if (this.weapon != null) this.weapon.draw();
+		
+		if (this.flickering) this.ctx.globalAlpha = 0.5;
 		super.draw();
+		if (this.armor != null) this.armor.draw();
+		if (this.flickering) this.ctx.globalAlpha = 1.0;
 	}
 	render() {
-		if (this.flickering) this.ctx.globalAlpha = 0.5;
 		if (!this.facingRight) this.ctx.scale(-1, 1, 1);
 		this.ctx.drawImage(this.image, -this.width/2, -this.height/2, this.width, this.height);
 		if (!this.facingRight) this.ctx.scale(-1, 1, 1);
-		if (this.flickering) this.ctx.globalAlpha = 1.0;
 	}
 	hurt() {
 		if (this.invincible == false) {
 			FRAME.shake(100,0.2);
 			this.invincible = true;
 			this.flickering = true;
-			this.health -= 1;
+			if (this.armorHealth > 0) {
+				this.armorHealth -= 1;
+				this.armorHealthPercentage = (this.armorHealth / this.maxArmorHealth);
+			}
+			else {
+				this.health -= 1;
+			}
 		}
+	}
+	equipArmor(className) {
+		this.armor = new className(this);
+		this.maxArmorHealth = this.armor.health;
+		this.armorHealth = this.armor.health;
 	}
 }
 
@@ -163,6 +194,7 @@ class ModelPlayer extends Actor {
 		this.height = this.image.height*PIXEL_SIZE;
 		this.scale = 2;
 		this.weapon = new Spear(this);
+		this.armor = null;
 		
 		this.running = false;
 		this.animationTimer = 0;
@@ -171,6 +203,13 @@ class ModelPlayer extends Actor {
 		//weapon updating
 		if (this.weapon != null) {
 			this.weapon.update();
+		}
+		//armor updating
+		if (this.armor != null) {
+			this.armor.update();
+			if (this.image != this.idleImage) {
+				this.armor.y += PIXEL_SIZE;
+			}
 		}
 		
 		//update animation state
@@ -206,7 +245,12 @@ class ModelPlayer extends Actor {
 		this.ctx.scale(this.scale, this.scale, 1);
 		if (this.weapon != null) this.weapon.draw();
 		this.ctx.scale(1/this.scale, 1/this.scale, 1);
+		
 		super.draw();
+		
+		this.ctx.scale(this.scale, this.scale, 1);
+		if (this.armor != null) this.armor.draw();
+		this.ctx.scale(1/this.scale, 1/this.scale, 1);
 	}
 	render() {
 		this.ctx.scale(this.scale, this.scale, 1);
@@ -216,8 +260,12 @@ class ModelPlayer extends Actor {
 		this.ctx.scale(1/this.scale, 1/this.scale, 1);
 	}
 	getNewWeapon() {
-		let construct =  this.target.weapon.constructor;
+		let construct = this.target.weapon.constructor;
 		this.weapon = new construct(this);
+	}
+	getNewArmor() {
+		let construct = this.target.armor.constructor;
+		this.armor = new construct(this);
 	}
 }
 
@@ -257,8 +305,12 @@ class MenuChar extends Actor {
 		this.colliding = false;
 		
 		this.image = img;
-		this.width = this.image.width*PIXEL_SIZE;
-		this.height = this.image.height*PIXEL_SIZE;
+		this.normalWidth = this.image.width*PIXEL_SIZE;
+		this.normalHeight = this.image.height*PIXEL_SIZE;
+		this.expandedWidth = this.normalWidth*1.2;
+		this.expandedHeight = this.normalHeight*1.2;
+		this.width = this.normalWidth;
+		this.height = this.normalHeight;
 		this.displayWidth = this.width;
 		this.displayHeight = this.height;
 		
@@ -280,12 +332,12 @@ class MenuChar extends Actor {
 		
 		//resize when colliding with player
 		if (this.colliding) {
-			this.width = this.image.width*PIXEL_SIZE*1.2;
-			this.height = this.image.height*PIXEL_SIZE*1.2;
+			this.width = this.expandedWidth;
+			this.height = this.expandedHeight;
 		}
 		else {
-			this.width = this.image.width*PIXEL_SIZE;
-			this.height = this.image.height*PIXEL_SIZE;
+			this.width = this.normalWidth;
+			this.height = this.normalHeight;
 		}
 		this.colliding = false;
 		
@@ -299,7 +351,7 @@ class MenuChar extends Actor {
 	}
 	render() {
 		this.ctx.drawImage(this.image, -this.displayWidth/2, -this.displayHeight/2, this.displayWidth, this.displayHeight);
-		if (this.width > this.image.width*PIXEL_SIZE) this.text.draw();
+		if (this.width > this.normalWidth) this.text.draw();
 	}
 	collide() {
 		this.colliding = true;
@@ -332,6 +384,120 @@ class InventoryChar extends MenuChar {
 		sceneManager.change("inventory");
 	}
 }
+
+class ArenaChar extends MenuChar {
+	constructor(x, y) {
+		super(x, y, FRAME.getImage("arena"), "Arena");
+	}
+	interact() {
+		sceneManager.change("arenaMenu");
+	}
+}
+
+class ArrowRightChar extends MenuChar {
+	constructor(x, y) {
+		super(x, y, FRAME.getImage("arrow"), "Next Area");
+		this.canInteract = true;
+	}
+	update() {
+		super.update();
+		
+		if (this.canInteract == false && keyboard[69] == false) {
+			this.canInteract = true;
+		}
+		if (groundAreaManager.getCurrentGroundArea() == groundAreaManager.getMaxGroundArea()) {
+			this.canInteract = false;
+			this.width = 0;
+			this.height = 0;
+		}
+	}
+	interact() {
+		if (this.canInteract == true) {
+			groundAreaManager.gotoGroundArea(groundAreaManager.getCurrentGroundArea()+1);
+			this.canInteract = false;
+		}
+	}
+}
+
+class ArrowLeftChar extends MenuChar {
+	constructor(x, y) {
+		super(x, y, FRAME.getImage("arrow"), "Previous Area");
+		this.canInteract = true;
+	}
+	update() {
+		super.update();
+		
+		if (this.canInteract == false && keyboard[69] == false) {
+			this.canInteract = true;
+		}
+		if (groundAreaManager.getCurrentGroundArea() == 0) {
+			this.canInteract = false;
+			this.width = 0;
+			this.height = 0;
+		}
+	}
+	interact() {
+		if (this.canInteract == true) {
+			groundAreaManager.gotoGroundArea(groundAreaManager.getCurrentGroundArea()-1);
+			this.canInteract = false;
+		}
+	}
+	render() {
+		this.ctx.scale(-1, 1, 1);
+		this.ctx.drawImage(this.image, -this.displayWidth/2, -this.displayHeight/2, this.displayWidth, this.displayHeight);
+		this.ctx.scale(-1, 1, 1);
+		if (this.width > this.normalWidth) this.text.draw();
+	}
+}
+
+/*class DungeonEntrance extends Actor {
+	constructor(x, y, difficulty) {
+		super(x, y);
+		this.image = FRAME.getImage("dungeon");
+		this.width = this.image.width*PIXEL_SIZE;
+		this.height = this.image.height*PIXEL_SIZE;
+		this.displayWidth = this.width;
+		this.displayHeight = this.height;
+		this.colliding = false;
+		this.difficulty = difficulty;
+		
+		this.text = new Text();
+		this.text.fillStyle = "#FFF";
+		this.text.text = "difficulty: "+difficulty;
+		this.text.fontsize = 24;
+		this.text.justify = "center";
+		this.text.y = -this.height;
+	}
+	update() {
+		this.displayWidth += (this.width - this.displayWidth) * 0.2;
+		this.displayHeight += (this.height - this.displayHeight) * 0.2;
+		if (Math.abs(this.displayWidth - this.width) < 0.01 && Math.abs(this.displayHeight - this.height) < 0.01) {
+			this.displayWidth = this.width;
+			this.displayHeight = this.height;
+		}
+		
+		//resizing when colliding with player
+		if (this.colliding) {
+			this.width = this.image.width*PIXEL_SIZE*1.2;
+			this.height = this.image.height*PIXEL_SIZE*1.2;
+		}
+		else {
+			this.width = this.image.width*PIXEL_SIZE;
+			this.height = this.image.height*PIXEL_SIZE;
+		}
+		this.colliding = false;
+		
+		//managing text
+		this.text.y = -this.displayHeight + 15;
+	}
+	render() {
+		this.ctx.drawImage(this.image, -this.displayWidth/2, -this.displayHeight/2, this.displayWidth, this.displayHeight);
+		if (this.width > this.image.width*PIXEL_SIZE) this.text.draw();
+	}
+	collide() {
+		this.colliding = true;
+	}
+}*/
 
 class NPC extends Actor {
 	constructor(x,y,type) {
