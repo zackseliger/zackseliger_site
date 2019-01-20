@@ -2,7 +2,7 @@ class GUI extends Actor {
 	constructor(target) {
 		super();
 		this.target = target || player;
-		
+
 		this.currentTree = null;
 		//money stuff
 		this.moneyImage = FRAME.getImage("coin");
@@ -31,11 +31,38 @@ class GUI extends Actor {
 				img = FRAME.getImage("shieldBlack");
 			this.shields.push(new ImageActor(i*50+this.hearts.length*50-23, 30, img, PIXEL_SIZE));
 		}
+		//on-death stuff
+		this.targetDead = false;
+		this.youDiedText = new Text(0, -150, "You Died");
+		this.youDiedText.fillStyle = "#DF4050";
+		this.youDiedText.justify = "center";
+		this.youDiedText.setFontSize(64);
+		this.dimBackground = new Actor();
+		this.dimBackground.render = function() {
+			this.ctx.fillStyle = "rgba(0,0,0,0.5)";
+			this.ctx.fillRect(0, 0, window.innerWidth/FRAME.scaleX, window.innerHeight/FRAME.scaleY);
+		}
+		//save text
+		this.saveText = new Text(0,0,"Saved...");
+		this.saveText.fillStyle = "#56DF69";
+		this.saveText.justify = "right";
+		this.saveText.setFontSize(32);
+		this.saveTextAlpha = 0.0;
 	}
 	update() {
 		this.x = (-FRAME.x - window.innerWidth/2) / FRAME.scaleX;
 		this.y = (-FRAME.y - window.innerHeight/2) / FRAME.scaleY;
-		
+
+		//see if dead
+		if (this.target.health <= 0 && this.target.armorHealth <= 0) {
+			this.targetDead = true;
+			this.youDiedText.x = window.innerWidth/2/FRAME.scaleX;
+			this.youDiedText.y = window.innerHeight/2/FRAME.scaleY - 250;
+		}
+		else {
+			this.targetDead = false;
+		}
+
 		//manage dialogue tree
 		if (this.currentTree != null) {
 			this.currentTree.update();
@@ -45,17 +72,20 @@ class GUI extends Actor {
 				this.target.canMove = true;
 			}
 		}
-		
+
 		//manage hearts
 		if (this.targetHealth != this.target.health) {
 			for (var i = 0; i < this.targetHealth; i++) {
-				//if health was lost/gained change image and make them large
+				//if health was lost change image and make them large
 				if (i+1 > this.target.health && i+1 <= this.targetHealth) {
 					this.hearts[i].image = FRAME.getImage("heartBlack");
 					this.hearts[i].width *= 1.75;
 					this.hearts[i].height *= 1.75;
 				}
-				else if (i+1 <= this.target.health && i+1 > this.targetHealth) {
+			}
+			//if health was gained change image and make them large
+			for (var i = 0;i < this.target.health; i++) {
+				if (i+1 <= this.target.health && i+1 > this.targetHealth) {
 					this.hearts[i].image = FRAME.getImage("heart");
 					this.hearts[i].width *= 1.75;
 					this.hearts[i].height *= 1.75;
@@ -68,7 +98,7 @@ class GUI extends Actor {
 			this.hearts[i].width += (this.hearts[i].image.width*PIXEL_SIZE - this.hearts[i].width) * 0.2;
 			this.hearts[i].height += (this.hearts[i].image.height*PIXEL_SIZE - this.hearts[i].height) * 0.2;
 		}
-		
+
 		//recreate array if max armor changed
 		if (this.targetMaxArmor != this.target.maxArmorHealth) {
 			this.shields = [];
@@ -82,14 +112,17 @@ class GUI extends Actor {
 		}
 		//manage shields
 		if (this.targetArmor != this.target.armorHealth) {
+			//if armor was lost change image and make them large
 			for (var i = 0; i < this.shields.length; i++) {
-				//if armor was lost/gained change image and make them large
 				if (i+1 > this.target.armorHealth && i+1 <= this.targetArmor) {
 					this.shields[i].image = FRAME.getImage("shieldBlack");
 					this.shields[i].width *= 1.75;
 					this.shields[i].height *= 1.75;
 				}
-				else if (i+1 <= this.target.armorHealth && i+1 > this.targetArmor) {
+			}
+			//if armor was gained change image and make them large
+			for (var i = 0; i < this.shields.length; i++) {
+				if (i+1 > this.targetArmor && i+1 <= this.target.armorHealth) {
 					this.shields[i].image = FRAME.getImage("shield");
 					this.shields[i].width *= 1.75;
 					this.shields[i].height *= 1.75;
@@ -102,12 +135,19 @@ class GUI extends Actor {
 			this.shields[i].width += (this.shields[i].image.width*PIXEL_SIZE - this.shields[i].width) * 0.2;
 			this.shields[i].height += (this.shields[i].image.height*PIXEL_SIZE - this.shields[i].height) * 0.2;
 		}
-		
+
 		//manage money text
 		this.moneyDisplay += (this.target.money - this.moneyDisplay) * 0.2;
 		this.moneyText.text = Math.floor(this.moneyDisplay);
 		if (Math.abs(this.moneyDisplay - this.target.money) < 0.1) {
 			this.moneyDisplay = this.target.money;
+		}
+
+		//update saveText
+		this.saveText.x = (window.innerWidth - 5) / FRAME.scaleX;
+		this.saveTextAlpha -= 0.01;
+		if (this.saveTextAlpha < 0) {
+			this.saveTextAlpha = 0.0;
 		}
 	}
 	render() {
@@ -122,6 +162,19 @@ class GUI extends Actor {
 		for (var i = 0; i < this.shields.length; i++) {
 			this.shields[i].draw();
 		}
+
+		//see if dead
+		if (this.target.health <= 0 && this.target.armorHealth <= 0) {
+			this.dimBackground.draw();
+			this.youDiedText.draw();
+		}
+
+		//render saved text
+		if (this.saveTextAlpha > 0.0) {
+			this.ctx.globalAlpha = this.saveTextAlpha;
+			this.saveText.draw();
+			this.ctx.globalAlpha = 1;
+		}
 	}
 	showTree(tree) {
 		this.currentTree = tree;
@@ -130,6 +183,84 @@ class GUI extends Actor {
 	catchUp() {
 		this.moneyDisplay = this.target.money;
 		this.update();
+	}
+	flashSaveText() {
+		this.saveTextAlpha = 1.0;
+	}
+}
+
+class ArenaGUI extends Actor {
+	constructor(target) {
+		super();
+
+		this.won = 0;
+		this.target = target;
+		if (this.target === undefined)
+			this.target = player;
+
+		//text
+		this.victoryText = new Text(0,-200,"Victory");
+		this.victoryText.fillStyle = "#56DF69";
+		this.victoryText.justify = "center";
+		this.victoryText.setFontSize(64);
+
+		//background. This one is only used for victory
+		this.dimBackground = new Actor();
+		this.dimBackground.render = function() {
+			this.ctx.fillStyle = "rgba(0,0,0,0.5)";
+			this.ctx.fillRect(-window.innerWidth/2/FRAME.scaleX, -window.innerHeight/2/FRAME.scaleY, window.innerWidth/FRAME.scaleX, window.innerHeight/FRAME.scaleY);
+		}
+
+		//back button
+		this.backButtonTimer = 40;
+		this.backButton = new Button(0, 0, "Back");
+		this.backButton.parent = this;
+		this.backButton.action = function() {
+			if (this.backButtonTimer > 0) return;
+			if (this.parent.won == 1) {
+				sceneManager.change("mainWorld");
+			}
+			//if lost, we have to reset :/
+			else if (this.parent.won == -1) {
+				resetGame();
+				sceneManager.change("mainMenu");
+			}
+			this.parent.backButtonTimer = 40;
+		}
+	}
+	update() {
+		this.x = -FRAME.x / FRAME.scaleX;
+		this.y = -FRAME.y / FRAME.scaleY;
+
+		if (characters.objects.length == 1 && characters.objects[0] === this.target) {
+			this.won = 1;
+		}
+		if (this.target.health <= 0 && this.target.armorHealth <= 0) {
+			this.won = -1;
+			this.backButton.text.text = "=(";
+			if (this.target.canMove) {
+				this.target.die();
+			}
+		}
+
+		if (this.won != 0) {
+			this.backButtonTimer -= 1;
+		}
+
+		this.backButton.update(this.x, this.y + window.innerHeight/10);
+	}
+	draw() {
+		super.draw();
+		if (this.won != 0 && this.backButtonTimer <= 0) {
+			this.backButton.draw();
+		}
+	}
+	render() {
+		if (this.canDraw == false) return;
+		if (this.won == 1) {
+			this.dimBackground.draw();
+			this.victoryText.draw();
+		}
 	}
 }
 
@@ -141,7 +272,7 @@ class TextBox extends Actor {
 		this.done = false;
 		this.spaceEnabled = false;
 		this.y = (window.innerHeight) / FRAME.scaleY - 200;
-		
+
 		this.text = new Text();
 		this.text.fillStyle = "#FFF";
 		this.text.justify = "center";
@@ -154,7 +285,7 @@ class TextBox extends Actor {
 		this.y = (window.innerHeight) / FRAME.scaleY - 200;
 		this.width = window.innerWidth / FRAME.scaleX;
 		this.text.x = this.width/2;
-		
+
 		//check for input and finish
 		if (keyboard[69] && this.spaceEnabled) {
 			this.done = true;
@@ -200,21 +331,44 @@ class DialogueTree extends Actor {
 class MainMenu extends Actor {
 	constructor() {
 		super();
-		
-		this.startButton = new Button(0,-100,"Start");
+
+		this.titleText = new Text(0,-250,"Arenaa.io");
+		this.titleText.justify = "center";
+		this.titleText.fillStyle = "#FFF";
+		this.titleText.setFontSize(64);
+
+		this.startButton = new Button(0,-50,"Start");
 		this.startButton.action = function() {
 			sceneManager.change("mainWorld");
+		}
+		this.settingsButton = new Button(0,50,"Settings",200);
+		this.settingsButton.action = function() {
+
+		}
+		this.loadButton = new Button(0,150,"Load Game",200);
+		this.loadButton.action = function() {
+			if (loadGame()) {
+				sceneManager.change("mainWorld");
+			}
 		}
 	}
 	update() {
 		this.x = -FRAME.x / FRAME.scaleX;
 		this.y = -FRAME.y / FRAME.scaleY;
-		
+
+		this.titleText.x = this.x;
+		this.titleText.y = this.y - 250;
+
 		this.startButton.update(this.x,this.y);
+		this.settingsButton.update(this.x,this.y);
+		this.loadButton.update(this.x, this.y);
 	}
 	draw() {
 		super.draw();
+		this.titleText.draw();
 		this.startButton.draw();
+		this.settingsButton.draw();
+		this.loadButton.draw();
 	}
 	render() {
 		//dimmed background
@@ -225,36 +379,62 @@ class MainMenu extends Actor {
 
 class ArenaMenu extends Actor {
 	constructor(target) {
-		super();
+		super(-FRAME.x/FRAME.scaleX, -FRAME.y/FRAME.scaleY);
 		this.target = target;
 		this.width = 400;
 		this.height = 550;
-		
+
 		this.exitButton = new Button(this.width/2-40, -this.height/2+35, "x", 40,40);
 		this.exitButton.text.fillStyle = "#CC3333";
 		this.exitButton.action = function() {
 			gui.catchUp();//this is for money
 			sceneManager.change("mainWorld");
 		}
-		
-		this.goButton = new Button(this.width/2-85, this.height/2-45, "go", 85);
+
+		//create cards according to global variable arenaBattles
+		this.lastSelectedCard = null;
+		this.cards = [];
+		for (var i = 0; i < arenaBattles.length; i++) {
+			this.cards.push(new ArenaCard(0, i*125-100, arenaBattles[i]));
+		}
+
+		//top text
+		this.topText = new Text(this.width, -this.height/2+25, "Select an arena");
+		this.topText.fillStyle = "#FFF";
+		this.topText.justify = "center";
 	}
 	update() {
 		this.x = -FRAME.x / FRAME.scaleX;
 		this.y = -FRAME.y / FRAME.scaleY;
-		
+
 		//exit menu when ESC is pressed
 		if (keyboard[27]) {
 			this.exitButton.action();
 		}
-		
+
+		//update text
+		this.topText.x = this.x;
+		this.topText.y = this.y - this.height/2+60;
+
+		//update our buttons
 		this.exitButton.update(this.x, this.y);
-		this.goButton.update(this.x, this.y);
+
+		//update the arena cards and go to arena if clicked
+		for (var i = 0; i < this.cards.length; i++) {
+			this.cards[i].update(this.x, this.y);
+			if (mouse.clicking && this.cards[i].selected) {
+				sceneManager.getScene("arenaWorld").setBattle(this.cards[i].battle);
+				sceneManager.change("arenaWorld");
+			}
+		}
 	}
 	draw() {
 		super.draw();
 		this.exitButton.draw();
-		this.goButton.draw();
+		for (var i = 0; i < this.cards.length; i++) {
+			this.cards[i].draw();
+		}
+		this.topText.draw();
 	}
 	render() {
 		//dimmed background
@@ -274,19 +454,19 @@ class ArenaMenu extends Actor {
 
 class ShopGUI extends Actor {
 	constructor(target) {
-		super(-FRAME.x / FRAME.scaleX, -FRAME.y / FRAME.scaleY);
-		
+		super(-FRAME.x/FRAME.scaleX, -FRAME.y/FRAME.scaleY);
+
 		this.target = target;
 		this.width = 400;
 		this.height = 550;
-		
+
 		this.exitButton = new Button(this.width/2-40,-this.height/2+35,"x", 40,40);
 		this.exitButton.text.fillStyle = "#CC3333";
 		this.exitButton.action = function() {
 			gui.catchUp();
 			sceneManager.change("mainWorld");
 		}
-		
+
 		this.moneyImage = FRAME.getImage("coin");
 		this.moneyText = new Text();
 		this.moneyText.x = -this.width/2 + 60;
@@ -294,7 +474,7 @@ class ShopGUI extends Actor {
 		this.moneyText.fillStyle = "#FFF";
 		this.moneyText.fontSize = 40;
 		this.moneyLerp = this.target.money;
-		
+
 		//for items that you can buy
 		this.items = [];
 		let types = this.target.shopList.getTypes();
@@ -305,28 +485,28 @@ class ShopGUI extends Actor {
 	update() {
 		this.x = -FRAME.x / FRAME.scaleX;
 		this.y = -FRAME.y / FRAME.scaleY;
-		
+
 		//change back to main scene when ESC is pressed
 		if (keyboard[27]) {
 			this.exitButton.action();
 		}
-		
+
 		//update money text
 		this.moneyLerp += (this.target.money - this.moneyLerp) * 0.2;
 		if (Math.abs(this.moneyLerp - this.target.money) < 0.1) {
 			this.moneyLerp = this.target.money;
 		}
 		this.moneyText.text = Math.floor(this.moneyLerp);
-		
+
 		//update items in shop
 		for (var i = 0; i < this.items.length; i++) {
 			this.items[i].update(this.x, this.y+i*100-110);
-			
+
 			//attempt to buy an item
 			if (this.items[i].buying) {
 				this.items[i].buy(this.target);
 			}
-			
+
 			//get a new item if item is bought
 			if (this.items[i].bought) {
 				let newItem = this.target.shopList.getUnboughtItem(this.items[i].type);
@@ -338,7 +518,7 @@ class ShopGUI extends Actor {
 				}
 			}
 		}
-		
+
 		this.exitButton.update(this.x, this.y);
 	}
 	draw() {
@@ -371,13 +551,13 @@ class ShopGUI extends Actor {
 class InventoryGUI extends Actor {
 	constructor(target) {
 		super(-FRAME.x / FRAME.scaleX, -FRAME.y / FRAME.scaleY);
-		
+
 		this.target = target;
 		this.width = 600;
 		this.height = 500;
-		
+
 		this.playerBox = new PlayerBox(this.target, 0, -this.height/4);
-		
+
 		//left/right pages buttons
 		this.leftButton = new TriangleButton(-this.width/2+50,150,25,true);
 		this.leftButton.parent = this;
@@ -395,17 +575,17 @@ class InventoryGUI extends Actor {
 				this.parent.changePages = true;
 			}
 		}
-		
+
 		this.pageTitles = [];
 		this.pageItems = [];
 		this.currentPage = 0;
 		this.changePages = true;
-		
+
 		this.titleText = new Text();
 		this.titleText.fillStyle = "#FFF";
 		this.titleText.justify = "center";
 		this.titleText.y = 50;
-		
+
 		//equip button
 		this.equipButton = new Button(0,20,"Equip");
 		this.equipButton.parent = this;
@@ -413,7 +593,7 @@ class InventoryGUI extends Actor {
 			for (let i = 0; i < this.parent.pageItems[this.parent.currentPage].length; i++) {
 				if (this.parent.pageItems[this.parent.currentPage][i].selected) {
 					this.parent.pageItems[this.parent.currentPage][i].equip(this.parent.target);
-					
+
 					//update playerBox depending on type
 					if (this.parent.pageItems[this.parent.currentPage][i].type == "weapon") {
 						this.parent.playerBox.modelPlayer.getNewWeapon();
@@ -424,7 +604,7 @@ class InventoryGUI extends Actor {
 				}
 			}
 		}
-		
+
 		this.exitButton = new Button(this.width/2-40,-this.height/2+35,"x", 40,40);
 		this.exitButton.text.fillStyle = "#CC3333";
 		this.exitButton.action = function() {sceneManager.change("mainWorld");}
@@ -432,11 +612,11 @@ class InventoryGUI extends Actor {
 	update() {
 		this.x = -FRAME.x / FRAME.scaleX;
 		this.y = -FRAME.y / FRAME.scaleY;
-		
+
 		if (this.changePages) {
 			this.titleText.text = this.pageTitles[this.currentPage];
 			this.changePages = false;
-			
+
 			//disable/enable left button
 			if (this.currentPage == 0) {
 				this.leftButton.disable();
@@ -444,7 +624,7 @@ class InventoryGUI extends Actor {
 			else if (this.leftButton.disabled) {
 				this.leftButton.enable();
 			}
-			
+
 			//disable/enable right button
 			if (this.currentPage == this.pageTitles.length-1) {
 				this.rightButton.disable();
@@ -453,19 +633,19 @@ class InventoryGUI extends Actor {
 				this.rightButton.enable();
 			}
 		}
-		
+
 		//change back to main scene when ESC is pressed
 		if (keyboard[27]) {
 			this.exitButton.action();
 		}
-		
+
 		this.playerBox.update();
-		
+
 		this.leftButton.update(this.x, this.y);
 		this.rightButton.update(this.x, this.y);
 		this.equipButton.update(this.x, this.y);
 		this.exitButton.update(this.x, this.y);
-		
+
 		//inventory items
 		for (var i = 0; i < this.pageItems[this.currentPage].length; i++) {
 			this.pageItems[this.currentPage][i].update(this.x, this.y);
@@ -473,11 +653,11 @@ class InventoryGUI extends Actor {
 	}
 	draw() {
 		super.draw();
-		
+
 		for (var i = 0; i < this.pageItems[this.currentPage].length; i++) {
 			this.pageItems[this.currentPage][i].draw();
 		}
-		
+
 		this.leftButton.draw();
 		this.rightButton.draw();
 		this.equipButton.draw();
@@ -493,17 +673,17 @@ class InventoryGUI extends Actor {
 		this.ctx.shadowBlur = 15;
 		this.ctx.fillRect(-this.width/2, -this.height/2, this.width, this.height);
 		this.ctx.shadowBlur = 0;
-		
+
 		//text
 		this.titleText.draw();
-		
+
 		//player box
 		this.playerBox.draw();
 	}
 	load() {
 		this.pageTitles = this.target.shopList.getEquippableTypes();
 		this.titleText.text = this.pageTitles[this.currentPage];
-		
+
 		//push all page items
 		for (var i = 0; i < this.pageTitles.length; i++) {
 			let items = this.target.shopList.getItems(this.pageTitles[i]);
@@ -512,6 +692,10 @@ class InventoryGUI extends Actor {
 				this.pageItems[i].push(new InventoryItem(items[j], -(items.length-1)*125/2+j*125, 150));
 			}
 		}
+
+		//make sure weapon and armor are up-to-date
+		this.playerBox.modelPlayer.getNewWeapon();
+		this.playerBox.modelPlayer.getNewArmor();
 	}
 }
 
@@ -523,10 +707,10 @@ class Button extends Actor {
 		this.realWidth = w;
 		this.realHeight = h;
 		this.shadowOffset = 5;
-		
+
 		this.width = this.realWidth;
 		this.height = this.realHeight;
-		
+
 		//text things
 		this.textY = -this.realHeight/2;
 		this.realTextSize = fontsize;
@@ -536,13 +720,13 @@ class Button extends Actor {
 		this.text.fillStyle = "#FFF";
 		this.text.fontSize = this.textSize;
 		this.text.justify = "center";
-		
+
 		this.prevMouse = true;
 	}
 	update(x,y) {
 		this.x = x + this.realX;
 		this.y = y + this.realY;
-		
+
 		if (mouse.clicking && checkAABBCollision(this, mouse)) {
 			this.width += (this.realWidth*1.025 - this.width) * 0.2;
 			this.height += (this.realHeight*1.025 - this.height) * 0.2;
@@ -554,7 +738,7 @@ class Button extends Actor {
 			this.height += (this.realHeight*1.2 - this.height) * 0.2;
 			this.textSize += (this.realTextSize*1.13 - this.textSize) * 0.2;
 			this.shadowOffset += (10 - this.shadowOffset) * 0.2;
-			
+
 			if (this.prevMouse == true && mouse.clicking == false) {
 				this.action();
 			}
@@ -566,7 +750,7 @@ class Button extends Actor {
 			this.shadowOffset += (5 - this.shadowOffset) * 0.2;
 		}
 		this.prevMouse = mouse.clicking;
-		
+
 		//text stuff
 		this.textY += (-this.height/2 - this.textY) * 0.2;
 		this.text.fontSize = Math.floor(this.textSize);
@@ -584,13 +768,13 @@ class Button extends Actor {
 
 class TriangleButton extends Polygon {
 	constructor(x, y, size=100, backwards=false) {
-		super(x,y,size);
-		
+		super(x,y,0);
+
 		this.realX = x;
 		this.realY = y;
 		this.shadowOffset = 5;
 		this.realSize = size;
-		
+
 		this.backwards = backwards;
 		if (this.backwards) {
 			this.addPoint(1,-1);
@@ -602,14 +786,14 @@ class TriangleButton extends Polygon {
 			this.addPoint(-1,1);
 			this.addPoint(1,0);
 		}
-		
+
 		this.disabled = false;
 		this.prevMouse = false;
 	}
 	update(x,y) {
 		this.x = x + this.realX;
 		this.y = y + this.realY;
-		
+
 		if (this.disabled) {
 			this.size += (0 - this.size) * 0.2;
 			this.shadowOffset += (0 - this.shadowOffset) * 0.2;
@@ -621,7 +805,7 @@ class TriangleButton extends Polygon {
 		else if (checkSATCollision(this, mousePolygon)) {
 			this.size += (this.realSize*1.2 - this.size) * 0.2;
 			this.shadowOffset += (10 - this.shadowOffset) * 0.2;
-			
+
 			if (this.prevMouse == true && mouse.clicking == false) {
 				this.action();
 			}
@@ -637,7 +821,7 @@ class TriangleButton extends Polygon {
 		this.ctx.translate(this.shadowOffset,this.shadowOffset);
 		super.render();
 		this.ctx.translate(-this.shadowOffset,-this.shadowOffset);
-		
+
 		this.color = "#3F3F57";
 		super.render();
 	}
@@ -653,7 +837,7 @@ class TriangleButton extends Polygon {
 class ShopItem extends Actor {
 	constructor(type, cost, className, name, buyCallback) {
 		super(-1000);
-		
+
 		this.name = name;
 		this.type = type;
 		this.cost = cost;
@@ -663,25 +847,25 @@ class ShopItem extends Actor {
 		this.buying = false;
 		this.pressedDown = false;
 		this.prevClicking = false;
-		
+
 		this.drawingFlash = false;
 		this.failedBuy = false;
 		this.flashTimer = 0;
 		this.failTimer = 0;
-		
+
 		this.realWidth = 325;
 		this.realHeight = 75;
 		this.width = this.realWidth;
 		this.height = this.realHeight;
 		this.shadowOffset = 5;
-		
+
 		this.text = new Text();
 		this.text.fillStyle = "#FFF";
 		this.text.text = this.name;
 		this.text.x = -this.width/2+5;
 		this.text.y = -this.height/2;
 		this.text.fontSize = 24;
-		
+
 		this.image = (new this.className()).image;
 		this.hasImage = (this.image !== undefined);
 		if (this.hasImage) {
@@ -693,7 +877,14 @@ class ShopItem extends Actor {
 			this.imageWidth = 0;
 			this.imageHeight = 0;
 		}
-		
+
+		//fixing image height
+		if (this.imageHeight > 45) {
+			var ratio = this.imageHeight / 45;
+			this.imageHeight = 45;
+			this.imageWidth /= ratio;
+		}
+
 		this.costImage = FRAME.getImage("coin");
 		this.costText = new Text();
 		this.costText.fillStyle = "#FFF";
@@ -706,13 +897,13 @@ class ShopItem extends Actor {
 	update(x, y) {
 		this.x = x;
 		this.y = y;
-		
+
 		//lerp sizes n stuff when moused over
 		if (mouse.clicking && checkAABBCollision(this, mouse)) {
 			this.width += (this.realWidth*1.05 - this.width) * 0.2;
 			this.height += (this.realHeight*1.05 - this.height) * 0.2;
 			this.shadowOffset += (7 - this.shadowOffset) * 0.2;
-			
+
 			if (this.prevClicking == false) {
 				this.pressedDown = true;
 			}
@@ -721,7 +912,7 @@ class ShopItem extends Actor {
 			this.width += (this.realWidth*1.1 - this.width) * 0.2;
 			this.height += (this.realHeight*1.1 - this.height) * 0.2;
 			this.shadowOffset += (10 - this.shadowOffset) * 0.2;
-			
+
 			if (this.prevClicking == true && this.pressedDown) {
 				this.buying = true;
 			}
@@ -735,7 +926,7 @@ class ShopItem extends Actor {
 			this.pressedDown = false;
 		}
 		this.prevClicking = mouse.clicking;
-		
+
 		//failed buy flash
 		if (this.failedBuy) {
 			this.failTimer++;
@@ -751,7 +942,7 @@ class ShopItem extends Actor {
 				this.drawingFlash = false;
 			}
 		}
-		
+
 		//move text n stuff
 		this.text.x = -this.width/2+5;
 		this.text.y = -this.height/2;
@@ -763,9 +954,9 @@ class ShopItem extends Actor {
 		this.ctx.fillRect(-this.width/2+this.shadowOffset, -this.height/2+this.shadowOffset, this.width, this.height);
 		this.ctx.fillStyle = "#3F3F57";
 		this.ctx.fillRect(-this.width/2, -this.height/2, this.width, this.height);
-		
+
 		this.text.draw();
-		
+
 		let imageX = -this.imageWidth/2 - this.width/2 + 45;
 		let imageY = -this.imageHeight/2+12;
 		if (this.hasImage) {
@@ -776,10 +967,10 @@ class ShopItem extends Actor {
 			this.classInstance.renderImage();
 			this.ctx.translate(-imageX, -imageY);
 		}
-		
+
 		this.ctx.drawImage(this.costImage, this.costText.x-this.costText.width-27, this.costText.y+5, 20, 20);
 		this.costText.draw();
-		
+
 		//red cover
 		if (this.drawingFlash) {
 			this.ctx.fillStyle = "#DB5764";
@@ -803,13 +994,13 @@ class ShopItem extends Actor {
 
 class InventoryItem extends Actor {
 	constructor(shopItem, x, y) {
-		super(-10000);
-		
+		super();
+
 		this.name = shopItem.name;
 		this.type = shopItem.type;
 		this.bought = shopItem.bought;
 		this.className = shopItem.className;
-		
+
 		this.realX = x;
 		this.realY = y;
 		this.realWidth = 100;
@@ -820,19 +1011,19 @@ class InventoryItem extends Actor {
 		this.rBits = 63;
 		this.gBits = 63;
 		this.bBits = 87;
-		
+
 		this.selected = false;
 		this.prevClicking = false;
-		
+
 		this.image = shopItem.image;
 		this.imageWidth = this.image.width*PIXEL_SIZE;
 		this.imageHeight = this.image.height*PIXEL_SIZE;
-		
+
 		this.nameText = new Text(0,-this.height/2,this.name);
 		this.nameText.fillStyle = "#FFF";
 		this.nameText.justify = "center";
 		this.nameText.fontSize = 24;
-		
+
 		if (this.bought == false) {
 			this.nameText.text = "???";
 			this.nameText.fontSize = 24;
@@ -847,12 +1038,12 @@ class InventoryItem extends Actor {
 	update(x, y) {
 		this.x = x + this.realX;
 		this.y = y + this.realY;
-		
+
 		this.nameText.y = -this.height/2;
 		if (this.bought == false) {
 			this.nameText.y = -12;
 		}
-		
+
 		//setting selected status
 		if (checkAABBCollision(mouse, this) && this.prevClicking == true && mouse.clicking == false && this.bought) {
 			this.selected = true;
@@ -860,7 +1051,7 @@ class InventoryItem extends Actor {
 		else if (this.prevClicking == true && mouse.clicking == false) {
 			this.selected = false;
 		}
-		
+
 		//change color
 		if (this.selected) {
 			this.rBits += (150 - this.rBits) * 0.1;
@@ -877,7 +1068,7 @@ class InventoryItem extends Actor {
 			this.gBits += (63 - this.gBits) * 0.1;
 			this.bBits += (87 - this.bBits) * 0.1;
 		}
-		
+
 		//make bigger n stuff
 		if (checkAABBCollision(mouse, this) && mouse.clicking) {
 			this.width += (this.realWidth*1.05 - this.width) * 0.2;
@@ -901,7 +1092,7 @@ class InventoryItem extends Actor {
 		this.ctx.fillRect(-this.width/2+this.shadowOffset, -this.height/2+this.shadowOffset, this.width, this.height);
 		this.ctx.fillStyle = "#"+rgbToHex(this.rBits, this.gBits, this.bBits);
 		this.ctx.fillRect(-this.width/2, -this.height/2, this.width, this.height);
-		
+
 		this.nameText.draw();
 		if (this.bought) {
 			this.ctx.drawImage(this.image, -this.imageWidth/2, -this.imageHeight/2+PIXEL_SIZE, this.imageWidth, this.imageHeight);
@@ -920,11 +1111,11 @@ class InventoryItem extends Actor {
 class PlayerBox extends Actor {
 	constructor(target, x, y) {
 		super(x, y);
-		
+
 		this.width = 250;
 		this.height = 200;
 		this.shadowOffset = 5;
-		
+
 		this.modelPlayer = new ModelPlayer(target);
 	}
 	update() {
@@ -936,8 +1127,112 @@ class PlayerBox extends Actor {
 		this.ctx.fillRect(-this.width/2+this.shadowOffset, -this.height/2+this.shadowOffset, this.width, this.height);
 		this.ctx.fillStyle = "#3F3F57";
 		this.ctx.fillRect(-this.width/2, -this.height/2, this.width, this.height);
-		
+
 		//player
 		this.modelPlayer.draw();
+	}
+}
+
+class ArenaCard extends Actor {
+	constructor(x,y,battle) {
+		super();
+
+		this.realX = x;
+		this.realY = y;
+		this.realWidth = 325;
+		this.realHeight = 100;
+		this.width = this.realWidth;
+		this.height = this.realHeight;
+		this.shadowOffset = 5;
+
+		this.prevClicking = false
+		this.selected = false;
+		this.rBits = 63;
+		this.gBits = 63;
+		this.bBits = 87;
+
+		//get class images and number of enemies
+		this.battle = battle;
+		this.classInfo = [];
+		let classMap = this.battle.getSequenceClasses();
+		for (var classInfo of classMap) {
+			let a = new Text();
+			a.text = "x"+classInfo[1];
+			a.fillStyle = "#FFF";
+			a.fontSize = 12;
+
+			this.classInfo.push([new classInfo[0]().image, a]);
+		}
+
+		this.nameText = new Text();
+		this.nameText.text = battle.name;
+		this.nameText.fontSize = 24;
+		this.nameText.fillStyle = "#FFF";
+	}
+	update(x,y) {
+		this.x = x + this.realX;
+		this.y = y + this.realY;
+
+		//moving text relative to card size
+		this.nameText.x = -this.width/2 + 5;
+		this.nameText.y = -this.height/2;
+
+		//change color
+		/*if (this.selected) {
+			this.rBits += (150 - this.rBits) * 0.1;
+			this.gBits += (150 - this.gBits) * 0.1;
+			this.bBits += (170 - this.bBits) * 0.1;
+		}
+		else {*/
+			this.rBits += (63 - this.rBits) * 0.1;
+			this.gBits += (63 - this.gBits) * 0.1;
+			this.bBits += (87 - this.bBits) * 0.1;
+		//}
+
+		//deselection code
+		if (this.selected) {
+			this.selected = false;
+		}
+
+		//changing size
+		if (checkAABBCollision(mouse, this) && mouse.clicking) {
+			this.width += (this.realWidth*1.05 - this.width) * 0.2;
+			this.height += (this.realHeight*1.05 - this.height) * 0.2;
+			this.shadowOffset += (7 - this.shadowOffset) * 0.2;
+			if (this.prevClicking == false) {
+				this.selected = true;
+			}
+		}
+		else if (checkAABBCollision(mouse, this) || this.selected) {
+			this.width += (this.realWidth*1.1 - this.width) * 0.2;
+			this.height += (this.realHeight*1.1 - this.height) * 0.2;
+			this.shadowOffset += (10 - this.shadowOffset) * 0.2;
+		}
+		else {
+			this.width += (this.realWidth - this.width) * 0.2;
+			this.height += (this.realHeight - this.height) * 0.2;
+			this.shadowOffset += (5 - this.shadowOffset) * 0.2;
+		}
+		this.prevClicking = mouse.clicking;
+	}
+	render() {
+		//base card and shadow
+		this.ctx.fillStyle = "rgba(0,0,0,0.5)";
+		this.ctx.fillRect(-this.width/2+this.shadowOffset, -this.height/2+this.shadowOffset, this.width, this.height);
+		this.ctx.fillStyle = "#"+rgbToHex(this.rBits, this.gBits, this.bBits);
+		this.ctx.fillRect(-this.width/2, -this.height/2, this.width, this.height);
+
+		//other things
+		this.nameText.draw();
+
+ 		//enemy things
+		for (let i = 0; i < this.classInfo.length; i++) {
+			let h = 25;
+			let w = this.classInfo[i][0].width/this.classInfo[i][0].height * h;
+			this.ctx.drawImage(this.classInfo[i][0], (i*75-this.realWidth/2+5)*(this.width/this.realWidth), -20, w, h);
+			this.classInfo[i][1].x = (i*75+this.classInfo[i][0].width+w-this.realWidth/2+5)*(this.width/this.realWidth);
+			this.classInfo[i][1].y = -15;
+			this.classInfo[i][1].draw();
+		}
 	}
 }

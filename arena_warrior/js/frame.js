@@ -36,10 +36,10 @@ FRAME.init = function(w, h) {
 	FRAME.resize();
 	
 	//modifying functions to make them more performant
-	/*FRAME.ctx.oldDrawImage = FRAME.ctx.drawImage;
+	FRAME.ctx.oldDrawImage = FRAME.ctx.drawImage;
 	FRAME.ctx.drawImage = function(img,x,y,w,h) {
 		FRAME.ctx.oldDrawImage(img,Math.floor(x),Math.floor(y),Math.floor(w),Math.floor(h));
-	}*/
+	}
 }
 FRAME.shake = function(amt, dur) {
 	FRAME.shakeAmount = amt;

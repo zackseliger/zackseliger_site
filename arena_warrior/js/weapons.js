@@ -184,9 +184,104 @@ class Sword extends Weapon {
 			this.extraRot += (-0.4 - this.extraRot) * 0.3;
 			
 			if (Math.abs(this.extraRot + 0.4) < 0.01) {
-				this.attacking = false;
+				this.relax();
 				this.swingDown = false;
 			}
 		}
+	}
+}
+
+class Bow extends Weapon {
+	constructor(owner) {
+		super("bow", owner);
+		this.attackFrames = 35;
+	}
+	update() {
+		super.update();
+		
+		//positioning relative to player
+		this.y += (this.owner.y - this.y) * 0.3;
+		if (this.owner.facingRight) {
+			this.x += (this.owner.x+28 - this.x) * 0.3;
+			this.rotation += (0 - this.rotation) * 0.3;
+		}
+		else {
+			this.x += (this.owner.x-28 - this.x) * 0.3;
+			this.rotation += (Math.PI - this.rotation) * 0.3;
+		}
+	}
+	strike() {
+		projectiles.add(new BowArrow(this.x,this.y,this.rotation));
+		this.relax();
+	}
+}
+
+class BowArrow extends Actor {
+	constructor(x,y,rot) {
+		super(x,y,rot);
+		this.image = FRAME.getImage("bowArrow");
+		this.width = this.image.width*PIXEL_SIZE;
+		this.height = this.image.height*PIXEL_SIZE;
+		this.facingRight = false;
+		if (Math.abs(this.rotation) < Math.PI/2) this.facingRight = true;
+		
+		this.polygon = new Polygon(0,0,this.width/1.9);
+		this.polygon.addPoint(1,-this.height/this.width);
+		this.polygon.addPoint(1,this.height/this.width);
+		this.polygon.addPoint(-1,this.height/this.width);
+		this.polygon.addPoint(-1,-this.height/this.width);
+		
+		this.aboveGround = 25;
+		this.speed = 10;
+		this.inGround = false;
+		this.deathTimer = 0;
+		this.startX = this.x;
+	}
+	update() {
+		var prevy = this.y;
+		
+		this.x += this.speed*Math.cos(this.rotation);
+		this.y += this.speed*Math.sin(this.rotation);
+		if (this.inGround == false) {
+			//rotation/velocity change
+			this.speed *= 0.999;
+			let rotVel = Math.pow(Math.abs(this.x-this.startX)/1000, 4);
+			if (this.facingRight) {
+				this.rotation += rotVel;
+			}
+			else {
+				this.rotation -= rotVel;
+			}
+			
+			//for attacking
+			for (let i = 0; i < characters.objects.length; i++) {
+				if (characters.objects[i].isEnemy === true) {
+					if (checkSATCollision(characters.objects[i].polygon, this.polygon)) {
+						characters.objects[i].hurt();
+					}
+				}
+			}
+		}
+		
+		//change height above ground and die
+		this.aboveGround -= this.y - prevy;
+		if (this.aboveGround <= 0) {
+			this.speed = 0;
+			this.inGround = true;
+		}
+		
+		if (this.inGround) {
+			this.deathTimer++;
+			if (this.deathTimer > 20) {
+				this.dead = true;
+			}
+		}
+		
+		this.polygon.x = this.x;
+		this.polygon.y = this.y;
+		this.polygon.rotation = this.rotation;
+	}
+	render() {
+		this.ctx.drawImage(this.image, -this.width/2, -this.height/2, this.width, this.height);
 	}
 }
