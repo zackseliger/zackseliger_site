@@ -60,7 +60,7 @@ class Player extends Actor {
 		}
 
 		//attack with weapon
-		if (keyboard[32]) {
+		if (keyboard[32] || (mouse.clicking && mouse.prevClicking == false)) {
 			if (this.weapon != null && this.weapon.attacking == false) {
 				this.weapon.attack();
 			}
@@ -188,8 +188,8 @@ class Player extends Actor {
 		this.shopList.addItem("weapon", 150, Bow, "Bow");
 		this.shopList.addItem("armor", 50, Leather, "Leather Armor");
 		this.shopList.addItem("armor", 200, GoldArmor, "Gold Armor");
-		this.shopList.addItem("land", 25, FirstGroundArea, "First Area");
-		this.shopList.addItem("land", 150, SecondGroundArea, "Second Area");
+		this.shopList.addItem("land", 15, FirstGroundArea, "First Stage");
+		this.shopList.addItem("land", 150, SecondGroundArea, "Second Stage");
 		this.shopList.makeEquippable("weapon");
 		this.shopList.makeEquippable("armor");
 

@@ -189,6 +189,160 @@ class GUI extends Actor {
 	}
 }
 
+class TutorialGUI extends Actor {
+	constructor() {
+		super();
+		
+		this.target = player;
+		
+		this.firstText = new Text(0,0,"");
+		this.firstText.setFontSize(36);
+		this.firstText.justify = "center";
+		this.firstText.fillStyle = "#FFF";
+		
+		this.secondText = new Text(0,0,"");
+		this.secondText.setFontSize(36);
+		this.secondText.justify = "center";
+		this.secondText.fillStyle = "#FFF";
+		
+		this.phase = -1;
+		this.firstLines = ["Welcome to Arenaa.io!", "Use \'E\' to enter buildings", "Go to the \'Inventory\' building", "Use \'Space\' or left mouse to attack", "Nice. You can afford the next stage", "Before you go", "If you die in the arena", "Enter the right arrow to advance"];
+		this.secondLines = ["Use WASD or the arrow keys to move", "Buy a Spear from the shop", "To equip your new spear", "Get 15 gold", "Buy \'first stage\' when you're ready", "The arena is dangerous", "You must restart the game", ""];
+		
+		//for testing moving
+		this.targetPrevx = this.target.x;
+		this.targetPrevy = this.target.y;
+		this.wBox = new LightUpBox(0, 150);
+		this.aBox = new LightUpBox(-60, 210);
+		this.sBox = new LightUpBox(0, 210);
+		this.dBox = new LightUpBox(60, 210);
+		
+		//for last couple phases
+		this.phaseTimer = 0;
+	}
+	update() {
+		var prevPhase = this.phase;
+		this.x = -FRAME.x / FRAME.scaleX;
+		this.y = -FRAME.y / FRAME.scaleY;
+		
+		//move text
+		this.firstText.y = -250;
+		this.secondText.y = -200;
+		
+		if (this.phase == 0) {
+			this.wBox.update();
+			this.aBox.update();
+			this.sBox.update();
+			this.dBox.update();
+			
+			//testing for w,a,s,d input
+			if (this.target.x - this.targetPrevx < 0) this.aBox.lightUp();
+			if (this.target.x - this.targetPrevx > 0) this.dBox.lightUp();
+			if (this.target.y - this.targetPrevy < 0) this.wBox.lightUp();
+			if (this.target.y - this.targetPrevy > 0) this.sBox.lightUp();
+			this.targetPrevx = this.target.x;
+			this.targetPrevy = this.target.y;
+			
+			//to see if player went in every direction
+			if (this.wBox.isLit() && this.aBox.isLit() && this.sBox.isLit() && this.dBox.isLit()) {
+				this.phase++;
+			}
+		}
+		else if (this.phase == 1) {
+			//see if player bought the spear
+			if (this.target.shopList.isBought("weapon", "Spear")) {
+				this.phase++;
+			}
+		}
+		else if (this.phase == 2) {
+			//put text at bottom
+			this.firstText.y = 150;
+			this.secondText.y = 200;
+			
+			//to see if player has a weapon
+			if (this.target.weapon != null) {
+				this.phase++;
+			}
+		}
+		else if (this.phase == 3) {
+			//put text at bottom
+			this.firstText.y = 150;
+			this.secondText.y = 200;
+			
+			//see if player can afford the new ground area
+			if (this.target.money >= 15) {
+				this.phase++;
+			}
+		}
+		else if (this.phase == 4) {
+			//put text at bottom
+			this.firstText.y = 150;
+			this.secondText.y = 200;
+			
+			if (this.target.shopList.isBought("land", "First Stage")) {
+				this.phase++;
+			}
+		}
+		else if (this.phase == 5) {
+			//put text at bottom
+			this.firstText.y = 150;
+			this.secondText.y = 200;
+			//make text color red
+			this.firstText.fillStyle = "#DF4050";
+			this.secondText.fillStyle = "#DF4050";
+			
+			this.phaseTimer++;
+			if (this.phaseTimer > 300) {
+				this.phase++;
+				this.phaseTimer = 0;
+			}
+		}
+		else if (this.phase == 6) {
+			//put text at bottom
+			this.firstText.y = 150;
+			this.secondText.y = 200;
+			
+			this.phaseTimer++;
+			if (this.phaseTimer > 300) {
+				this.phase++;
+				this.phaseTimer = 0;
+			}
+		}
+		else if (this.phase == 7) {
+			//put text at bottom
+			this.firstText.y = 150;
+			this.secondText.y = 200;
+			//color back
+			this.firstText.fillStyle = "#FFF";
+		}
+		
+		//goto first phase
+		if (this.phase < 0) {
+			this.phase++;
+		}
+		//screen shake for passing and changing text
+		if (this.phase != prevPhase) {
+			FRAME.shake(100, 0.2);
+			this.firstText.text = this.firstLines[this.phase];
+			this.secondText.text = this.secondLines[this.phase];
+		}
+	}
+	render() {
+		this.firstText.draw();
+		this.secondText.draw();
+		
+		if (this.phase == 0) {
+			this.wBox.draw();
+			this.aBox.draw();
+			this.sBox.draw();
+			this.dBox.draw();
+		}
+	}
+	setPhase(ph) {
+		this.phase = ph;
+	}
+}
+
 class ArenaGUI extends Actor {
 	constructor(target) {
 		super();
@@ -261,6 +415,38 @@ class ArenaGUI extends Actor {
 			this.dimBackground.draw();
 			this.victoryText.draw();
 		}
+	}
+}
+
+class LightUpBox extends Actor {
+	constructor(x, y) {
+		super(x, y);
+		
+		this.litUp = false;
+		this.realSize = 50;
+		this.size = 50;
+	}
+	update() {
+		this.size += (this.realSize - this.size) * 0.2;
+	}
+	render() {
+		this.ctx.globalAlpha = 0.8;
+		if (this.litUp) {
+			this.ctx.fillStyle = "#FCF932";
+		}
+		else {
+			this.ctx.fillStyle = "#EEE";
+		}
+		this.ctx.fillRect(-this.size/2, -this.size/2, this.size, this.size);
+		this.ctx.globalAlpha = 1.0;
+	}
+	lightUp() {
+		if (this.litUp) return;
+		this.litUp = true;
+		this.size *= 2;
+	}
+	isLit() {
+		return this.litUp;
 	}
 }
 

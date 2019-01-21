@@ -12,7 +12,7 @@ window.onload = function() {
 	projectiles = new Collection();
 	characters = new Collection();
 	onScreenActors = new Collection();
-	player = new Player(500,500);
+	player = new Player(500,250);
 	gui = new GUI();
 	sceneManager = new SceneManager();
 	//mouse polygon

@@ -68,6 +68,16 @@ class ShopList {
 			}
 		}
 	}
+	isBought(type, name) {
+		var scannerArray = this.items.get(type);
+
+		for (let i = 0; i < scannerArray.length; i++) {
+			if (scannerArray[i].name == name) {
+				if (scannerArray[i].bought) return true;
+			}
+		}
+		return false;
+	}
 	makeEquippable(type) {
 		for (let i = 0; i < this.types.length; i++) {
 			if (this.types[i] == type) {
@@ -207,11 +217,12 @@ class TutorialGroundArea extends GroundArea {
 	constructor() {
 		super("#222", 1500, 1150, 20);
 		this.giveEnemy(Bee, 1);
+		this.tutorialGUI = new TutorialGUI();
 	}
 	setUp() {
 		super.setUp();
 		makeRandomTiles(Rock,this.x,this.y,this.width,this.height,5,57);
-		specialThings.add(new TutorialObject());
+		specialThings.add(this.tutorialGUI);
 	}
 }
 
@@ -300,45 +311,6 @@ class Tile extends Actor {
 	}
 	render() {
 		this.ctx.drawImage(this.image, -this.width/2, -this.height/2, this.width, this.height);
-	}
-}
-
-class TutorialObject extends Tile {
-	constructor() {
-		super(false, 0, 0);
-
-		this.hasWeapon = false;
-
-		this.welcomeText = new Text(500,400,"Welcome to Arenaa.io!");
-		this.welcomeText.justify = "center";
-		this.welcomeText.fillStyle = "#FFF";
-
-		this.controlsText = new Text(500, 435, "Use WASD or arrow keys to move");
-		this.controlsText.justify = "center";
-		this.controlsText.fillStyle = "#FFF";
-
-		this.eText = new Text(500, 50, "Press \'E\' to enter buildings");
-		this.eText.justify = "center";
-		this.eText.fillStyle = "#FFF";
-
-		this.buyText = new Text(350, -275, "Buy a Spear");
-		this.buyText.justify = "center";
-		this.buyText.fillStyle = "#FFF";
-
-		this.equipText = new Text(500, -240, "Equip it here");
-		this.equipText.justify = "center";
-		this.equipText.fillStyle = "#FFF";
-
-		this.render = function() {
-			this.welcomeText.draw();
-			this.controlsText.draw();
-			this.eText.draw();
-			this.buyText.draw();
-			this.equipText.draw();
-		}
-	}
-	update() {
-
 	}
 }
 

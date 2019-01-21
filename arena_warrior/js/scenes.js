@@ -165,8 +165,8 @@ class MainWorldScene extends Scene {
 		specialThings.update();
 	}
 	render() {
-		specialThings.draw();
 		renderOnScreenActors();
+		specialThings.draw();
 		gui.draw();
 
 		if (gui.targetDead) {
