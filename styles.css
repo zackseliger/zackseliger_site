@@ -1,35 +1,58 @@
 body {
-	font-family: Arial, sans-serif;
+	font-family: 'Open Sans', Arial, sans-serif;
 	margin:40px auto;
-	max-width:800px;
+	/* max-width:800px; */
 	line-height:1.6;
 	font-size:18px;
 	color:#444;
-	background-color: #FAFAFA;
+	/* background-color: #FAFAFA; */
 	padding:0 10px
 }
 h1,h2,h3{
+	font-family: 'Noto Sans', Arial, sans-serif;
+	font-weight: bold;
 	text-align: center;
 	line-height:1.2
 }
 code {
 	font-size: 15px;
 }
-a.block {
-	color: white;
-	text-decoration: none;
-}
 a {
 	color: #43F;
 	text-decoration: none;
 }
 a:hover {
-	color: #FF3333;
+	color: #EE5566;
 }
-.block {
-	text-align: center;
+a.game {
+	color: #FFF;
+}
+a.game:hover {
+	color: #EE5566;
+}
+.game {
 	display: inline-block;
-	width: 250px;
-	margin: 5px 5px 5px 5px;
-	background-color: #333;
+	background-color: #222;
+	width: 300px;
+	height: 200px;
+	overflow: hidden;
+	background-position: center;
+	position: relative;
+	border-radius: 3px;
+	background-size: 250%;
+	box-shadow: 0 0 5px 1px #000;
+	margin: 10px;
+
+}
+.game-name {
+	background-color: rgba(0,0,0,0.7);
+	position: absolute;
+	bottom: 0;
+	width: 100%;
+	text-align: center;
+}
+.content-box {
+	width: 80%;
+	margin: 0 auto;
+	text-align: center;
 }
