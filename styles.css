@@ -56,3 +56,12 @@ a.game:hover {
 	margin: 0 auto;
 	text-align: center;
 }
+.site {
+	display: inline-block;
+	margin: 0 25px;
+	padding: 25px 0;
+	width: 380px;
+}
+.site img {
+	max-height: 35px;
+}
