@@ -59,9 +59,17 @@ a.game:hover {
 .site {
 	display: inline-block;
 	margin: 0 25px;
-	padding: 25px 0;
+	padding: 20px 0;
 	width: 380px;
 }
 .site img {
-	max-height: 35px;
+	max-width: 320px;
+	vertical-align: middle;
+}
+.spoof-text {
+	display: inline-block;
+	color: #FFF;
+	font-size: 44px;
+	margin: 0;
+	vertical-align: middle;
 }
